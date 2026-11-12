@@ -27,6 +27,7 @@ struct HostView {
     auth: String,
     key_path: String,
     color: String,
+    icon: String,
     has_secret: bool,
 }
 
@@ -41,6 +42,7 @@ impl From<&HostEntry> for HostView {
             auth: h.auth.clone(),
             key_path: h.key_path.clone(),
             color: h.color.clone(),
+            icon: h.icon.clone(),
             has_secret: h.secret.is_some(),
         }
     }
@@ -109,6 +111,24 @@ fn delete_host(id: String) {
     let s = store();
     s.data.lock().unwrap().hosts.retain(|h| h.id != id);
     s.save();
+}
+
+/// Sets (or with an empty string, removes) a host's custom avatar image.
+#[tauri::command]
+fn set_host_icon(id: String, icon: String) -> Result<(), String> {
+    const MAX: usize = 512 * 1024;
+    if !icon.is_empty() && !icon.starts_with("data:image/") {
+        return Err("Formato de imagem inválido.".into());
+    }
+    if icon.len() > MAX {
+        return Err("Imagem grande demais.".into());
+    }
+    let s = store();
+    if s.find(&id).is_none() {
+        return Err("Máquina não encontrada.".into());
+    }
+    s.update(&id, |h| h.icon = icon);
+    Ok(())
 }
 
 #[tauri::command]
@@ -198,6 +218,7 @@ fn main() {
             list_hosts,
             save_host,
             delete_host,
+            set_host_icon,
             reorder_hosts,
             probe,
             connect,
