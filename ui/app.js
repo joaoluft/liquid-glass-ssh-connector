@@ -537,14 +537,35 @@ document.addEventListener("contextmenu", (e) => { if (!e.target.closest("input")
 
 loadHosts();
 
-/* ---------- browser preview mock ---------- */
+/* ---------- browser preview mock (fictional data; only used outside Tauri) ---------- */
+// Open index.html#demo to auto-open a session with sample output (used for the README screenshot).
+if (!T && location.hash === "#demo") setTimeout(() => openSessionFor(hosts[0]), 300);
+
 function mockInvoke(cmd, args) {
-  const db = (mockInvoke.db ||= [{ id: "1", name: "Fedora Server", host: "192.168.1.20", port: 22, user: "admin", auth: "password", keyPath: "", color: "#5ac8fa", hasSecret: false }, { id: "2", name: "Proxmox", host: "192.168.1.10", port: 22, user: "root", auth: "key", keyPath: "", color: "#ff9f0a", hasSecret: false }]);
+  const db = (mockInvoke.db ||= [
+    { id: "1", name: "Fedora Server", host: "192.168.1.20", port: 22, user: "admin", auth: "key", keyPath: "", color: "#5ac8fa", hasSecret: false },
+    { id: "2", name: "Proxmox", host: "192.168.1.10", port: 22, user: "root", auth: "key", keyPath: "", color: "#ff9f0a", hasSecret: false },
+    { id: "3", name: "Pi-hole", host: "192.168.1.53", port: 22, user: "pi", auth: "password", keyPath: "", color: "#ff453a", hasSecret: true },
+    { id: "4", name: "NAS", host: "192.168.1.40", port: 2222, user: "admin", auth: "key", keyPath: "", color: "#30d158", hasSecret: false },
+    { id: "5", name: "Home Assistant", host: "192.168.1.60", port: 22, user: "hass", auth: "password", keyPath: "", color: "#bf5af2", hasSecret: true },
+  ]);
+  const ping = { "192.168.1.20": 2, "192.168.1.10": 1, "192.168.1.53": 3, "192.168.1.40": 4, "192.168.1.60": null };
+  const P = "\x1b[1;32madmin@fedora\x1b[0m:\x1b[1;34m~\x1b[0m$ ";
+  const demo = [
+    "Last login: Thu Nov 12 17:02:11 2026 from 192.168.1.5\r\n",
+    P + "uptime\r\n 17:04:52 up 23 days,  4:11,  1 user,  load average: 0.18, 0.22, 0.19\r\n",
+    P + "docker ps --format 'table {{.Names}}\\t{{.Status}}'\r\n",
+    "\x1b[1mNAMES            STATUS\x1b[0m\r\n",
+    "jellyfin         Up 6 days (healthy)\r\nnextcloud        Up 6 days\r\ngrafana          Up 12 days\r\nprometheus       Up 12 days\r\ntraefik          Up 23 days\r\n",
+    P + "df -h /srv\r\n",
+    "Filesystem      Size  Used Avail Use% Mounted on\r\n/dev/sda1       1.8T  742G  1.1T  41% /srv\r\n",
+    P,
+  ].join("");
   switch (cmd) {
     case "list_hosts": return Promise.resolve(db.slice());
-    case "probe": return Promise.resolve(args.host.endsWith(".20") ? 2 : null);
+    case "probe": return Promise.resolve(ping[args.host] ?? null);
     case "save_host": { const x = { ...args.input, id: args.input.id || String(Date.now()), hasSecret: false }; const i = db.findIndex((d) => d.id === x.id); i >= 0 ? (db[i] = x) : db.push(x); return Promise.resolve(x); }
-    case "connect": setTimeout(() => { args.onEvent.onmessage({ type: "status", state: "connected", message: "" }); args.onEvent.onmessage({ type: "data", data: "\x1b[1;32madmin@fedora\x1b[0m:\x1b[1;34m~\x1b[0m$ " }); }, 500); return Promise.resolve();
+    case "connect": setTimeout(() => { args.onEvent.onmessage({ type: "status", state: "connected", message: "" }); args.onEvent.onmessage({ type: "data", data: demo }); }, 400); return Promise.resolve();
     default: return Promise.resolve(cmd === "clip_read" ? "" : null);
   }
 }
