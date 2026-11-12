@@ -1,0 +1,32 @@
+[package]
+name = "ssh-connector"
+version = "1.0.0"
+description = "SSH Connector — cliente SSH minimalista"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["net", "sync", "time", "macros"] }
+russh = { version = "0.54", default-features = false, features = ["ring", "rsa", "flate2"] }
+arboard = { version = "3", default-features = false }
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security_Cryptography", "Win32_System_Memory"] }
+uuid = { version = "1", features = ["v4"] }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt", "macros"] }

@@ -1,0 +1,21 @@
+# Rust / Tauri build output
+src-tauri/target/
+src-tauri/gen/
+
+# built executables (publish them as GitHub Releases instead)
+dist/
+*.exe
+
+# local tooling / editor
+.claude/
+.vscode/
+.idea/
+*.tmp
+*.log
+
+# never commit secrets or local configs
+*.pem
+*.key
+id_*
+config.json
+.env
