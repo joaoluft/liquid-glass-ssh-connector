@@ -14,6 +14,17 @@ cargo build --release
 copy target\release\ssh-connector.exe "..\dist\SSH Connector.exe"
 ```
 
+## Área de transferência
+O app tem um clipboard próprio (botão na barra de título ou `Ctrl+Shift+V`): tudo que você copia em
+qualquer terminal fica num histórico, e um clique cola o item no terminal ativo, ideal para levar comandos
+de uma máquina para outra. Itens podem ser fixados. O histórico fica só na memória e some ao fechar o app.
+
 ## Atalhos
-Ctrl+N nova máquina · Ctrl+F buscar · Ctrl+Tab trocar aba · Ctrl+Shift+W fechar aba
-Ctrl+Shift+C copiar · Ctrl+V colar · botão direito: copia seleção / cola
+| Ação | Atalho |
+| --- | --- |
+| Copiar seleção | `Ctrl+C` (com texto selecionado) · `Ctrl+Shift+C` · `Ctrl+Insert` |
+| Colar | `Ctrl+V` · `Shift+Insert` |
+| Área de transferência | `Ctrl+Shift+V` · teclas `1`–`9` colam um item com o painel aberto |
+| Menu do terminal | clique direito (copiar, colar, selecionar tudo, limpar) |
+| Nova máquina / buscar | `Ctrl+N` / `Ctrl+F` |
+| Trocar / fechar aba | `Ctrl+Tab` / `Ctrl+Shift+W` |

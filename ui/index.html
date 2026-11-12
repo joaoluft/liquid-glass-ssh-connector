@@ -12,6 +12,7 @@
 
   <header class="titlebar" data-tauri-drag-region>
     <div class="title" data-tauri-drag-region><span class="app-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m7 8 4 4-4 4M13 16h5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>SSH Connector</div>
+    <button class="tb-btn" id="clipBtn" title="Área de transferência (Ctrl+Shift+V)"></button>
     <div class="caption">
       <button class="cap" data-win="min" title="Minimizar"><svg viewBox="0 0 10 10"><path d="M0 5.5h10"/></svg></button>
       <button class="cap" data-win="max" title="Maximizar">
@@ -50,6 +51,20 @@
       </section>
     </main>
   </div>
+
+  <aside class="clip glass-strong" id="clip" aria-label="Área de transferência">
+    <div class="clip-head">
+      <div>
+        <div class="clip-title">Área de transferência</div>
+        <div class="clip-sub" id="clipCount"></div>
+      </div>
+      <span class="grow"></span>
+      <button class="pbtn" id="clipClear" hidden>Limpar</button>
+      <button class="icon-btn" id="clipClose" title="Fechar (Esc)"></button>
+    </div>
+    <div class="clip-list" id="clipList"></div>
+    <div class="clip-foot">Clique em um item para colar no terminal ativo · <kbd>1</kbd>–<kbd>9</kbd> atalhos<br>Fica só na memória — some ao fechar o app.</div>
+  </aside>
 
   <div class="scrim" id="scrim"></div>
   <div class="sheet glass-strong" id="sheet" role="dialog" aria-modal="true"></div>

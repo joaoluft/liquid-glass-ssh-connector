@@ -20,6 +20,14 @@ const I = {
   key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.3-9.3M17 6l3 3M14 9l2 2"/></svg>',
   power: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v9"/><path d="M6.3 7.3a8 8 0 1 0 11.4 0"/></svg>',
   redo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>',
+  clip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2.5" width="8" height="4" rx="1.2"/><path d="M16 4.5h1.5a2 2 0 0 1 2 2V19a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2H8"/><path d="M9 12h6M9 16h4"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8.5" y="8.5" width="12" height="12" rx="2.5"/><path d="M15.5 8.5V6a2.5 2.5 0 0 0-2.5-2.5H6A2.5 2.5 0 0 0 3.5 6v7A2.5 2.5 0 0 0 6 15.5h2.5"/></svg>',
+  paste: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2.5" width="8" height="4" rx="1.2"/><path d="M16 4.5h1.5a2 2 0 0 1 2 2V19a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2H8"/><path d="M12 10v7M9 14l3 3 3-3"/></svg>',
+  pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v4.5M8.5 3.5h7l-1 6 3 3.5h-11l3-3.5z"/></svg>',
+  pinOff: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v4.5" fill="none"/><path d="M8.5 3.5h7l-1 6 3 3.5h-11l3-3.5z"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9.5 7V4.5h5V7M6 7l1 13h10l1-13"/></svg>',
+  selectAll: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="3 3"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/></svg>',
+  eraser: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-3.5-3.5a1.5 1.5 0 0 1 0-2.1L14 4.9a1.5 1.5 0 0 1 2.1 0l4 4a1.5 1.5 0 0 1 0 2.1L10 21zM21 21H10M8.5 10.5l5 5"/></svg>',
   alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 8v5M12 16.5h.01"/><circle cx="12" cy="12" r="9"/></svg>',
 };
 
@@ -302,19 +310,25 @@ function createSession(sid, host) {
   const s = { sid, hostId: host.id, host, term, fit, pane, state: "idle", tab: null };
   sessions.set(sid, s);
 
-  // keyboard: Ctrl+Shift+C copy, Ctrl+Shift+V / Ctrl+V paste (Ctrl+C stays SIGINT)
+  // keyboard, Windows Terminal style:
+  //   Ctrl+C copies when there is a selection (otherwise it's SIGINT), Ctrl+Shift+C / Ctrl+Insert copy,
+  //   Ctrl+V / Shift+Insert paste, Ctrl+Shift+V opens the in-app clipboard
   term.attachCustomKeyEventHandler((e) => {
     if (e.type !== "keydown") return true;
     const k = e.key.toLowerCase();
-    if (e.ctrlKey && e.shiftKey && k === "c") { e.preventDefault(); copySel(s); return false; }
-    if (e.ctrlKey && k === "v") { e.preventDefault(); paste(s); return false; }
-    if (e.ctrlKey && e.shiftKey && k === "w") { e.preventDefault(); closeSession(sid); return false; }
-    if (e.ctrlKey && k === "tab") { e.preventDefault(); cycle(e.shiftKey ? -1 : 1); return false; }
+    const stop = () => { e.preventDefault(); return false; };
+    if (e.ctrlKey && e.shiftKey && k === "v") { toggleClip(); return stop(); }
+    if (e.ctrlKey && k === "c" && (e.shiftKey || term.hasSelection())) { copySel(s); return stop(); }
+    if (e.ctrlKey && k === "insert") { copySel(s); return stop(); }
+    if ((e.ctrlKey && k === "v") || (e.shiftKey && k === "insert")) { paste(s); return stop(); }
+    if (e.ctrlKey && e.shiftKey && k === "a") { term.selectAll(); return stop(); }
+    if (e.ctrlKey && e.shiftKey && k === "w") { closeSession(sid); return stop(); }
+    if (e.ctrlKey && k === "tab") { cycle(e.shiftKey ? -1 : 1); return stop(); }
     return true;
   });
   $(".term", pane).addEventListener("contextmenu", (e) => {
     e.preventDefault();
-    if (term.hasSelection()) { copySel(s); term.clearSelection(); } else paste(s);
+    openTermMenu(s, e.clientX, e.clientY);
   });
 
   term.onData((d) => { if (s.state === "connected") invoke("write", { sessionId: s.sid, data: d }); });
@@ -508,15 +522,155 @@ async function installKey(s) {
   }
 }
 
-async function copySel(s) {
-  const t = s.term.getSelection();
-  if (t) { await invoke("clip_write", { text: t }); toast("Copiado"); }
+/* ---------- in-app clipboard ----------
+   History of everything copied in the app (and pasted from Windows), kept in memory only:
+   terminals often show passwords/tokens, so nothing is written to disk. */
+const CLIP_MAX = 40;
+let clips = []; // { id, text, src, color, ts, pinned }
+
+function addClip(text, src, color) {
+  if (!text || !text.trim()) return;
+  const prev = clips.find((c) => c.text === text);
+  clips = clips.filter((c) => c.text !== text);
+  clips.unshift({ id: crypto.randomUUID(), text, src, color, ts: Date.now(), pinned: prev?.pinned || false });
+  // keep pinned items, cap the rest
+  let free = 0;
+  clips = clips.filter((c) => c.pinned || ++free <= CLIP_MAX);
+  renderClips();
 }
+
+async function copyText(text, src, color) {
+  await invoke("clip_write", { text });
+  addClip(text, src, color);
+}
+
+async function copySel(s) {
+  // like Windows Terminal: drop the trailing padding spaces xterm adds at the end of selected lines
+  const t = s.term.getSelection().replace(/[ \t]+$/gm, "");
+  if (!t) return;
+  await copyText(t, s.host.name, s.host.color);
+  s.term.clearSelection();
+  toast("Copiado");
+}
+
 async function paste(s) {
   if (s.state !== "connected") return;
   const t = await invoke("clip_read");
-  if (t) s.term.paste(t);
+  if (!t) return;
+  if (!clips.length || clips[0].text !== t) addClip(t, "Windows", "#8e8e93");
+  s.term.paste(t);
 }
+
+/** Paste a history item into the active terminal (and make it the system clipboard too). */
+async function pasteClip(c) {
+  await invoke("clip_write", { text: c.text });
+  const s = sessions.get(activeSid);
+  if (s && s.state === "connected") {
+    s.term.paste(c.text);
+    s.term.focus();
+    toast(`Colado em ${s.host.name}`);
+  } else {
+    toast("Copiado — abra um terminal para colar");
+  }
+}
+
+const ago = (ts) => {
+  const m = Math.floor((Date.now() - ts) / 60000);
+  return m < 1 ? "agora" : m < 60 ? `${m} min` : `${Math.floor(m / 60)} h`;
+};
+
+function renderClips() {
+  const n = clips.length;
+  const badge = $("#clipBadge");
+  badge.textContent = n;
+  badge.hidden = !n;
+  $("#clipCount").textContent = n ? `${n} ${n === 1 ? "item" : "itens"}` : "";
+  $("#clipClear").hidden = !clips.some((c) => !c.pinned);
+
+  const list = $("#clipList");
+  list.innerHTML = "";
+  if (!n) {
+    list.append(h("div", { class: "clip-empty" }, `
+      <div class="clip-empty-ico">${I.clip}</div>
+      <p>Nada copiado ainda.</p>
+      <p class="hint">Selecione texto em um terminal e pressione <kbd>Ctrl</kbd>+<kbd>C</kbd>.<br>Tudo que você copiar aparece aqui para colar em qualquer máquina.</p>`));
+    return;
+  }
+  const ordered = [...clips.filter((c) => c.pinned), ...clips.filter((c) => !c.pinned)];
+  ordered.forEach((c, i) => {
+    const lines = c.text.split(/\r?\n/).length;
+    const el = h("div", { class: "clip-item" + (c.pinned ? " pinned" : ""), title: "Clique para colar no terminal ativo" }, `
+      <pre class="clip-text">${esc(c.text.length > 600 ? c.text.slice(0, 600) + "…" : c.text)}</pre>
+      <div class="clip-meta">
+        <span class="clip-src"><i style="background:${esc(c.color || "#8e8e93")}"></i>${esc(c.src)}</span>
+        <span>· ${ago(c.ts)}${lines > 1 ? ` · ${lines} linhas` : ""}</span>
+        ${i < 9 ? `<span class="clip-key">${i + 1}</span>` : ""}
+      </div>
+      <div class="clip-actions">
+        <button class="icon-btn" data-a="pin" title="${c.pinned ? "Desafixar" : "Fixar"}">${c.pinned ? I.pinOff : I.pin}</button>
+        <button class="icon-btn" data-a="copy" title="Copiar para o Windows">${I.copy}</button>
+        <button class="icon-btn" data-a="del" title="Remover">${I.trash}</button>
+      </div>`);
+    el.onclick = async (e) => {
+      const a = e.target.closest("[data-a]")?.dataset.a;
+      if (a === "pin") { c.pinned = !c.pinned; renderClips(); }
+      else if (a === "copy") { await invoke("clip_write", { text: c.text }); toast("Copiado"); }
+      else if (a === "del") { clips = clips.filter((x) => x !== c); renderClips(); }
+      else pasteClip(c);
+    };
+    list.append(el);
+  });
+}
+
+function toggleClip(force) {
+  const p = $("#clip");
+  const on = force ?? !p.classList.contains("on");
+  p.classList.toggle("on", on);
+  $("#clipBtn").classList.toggle("on", on);
+  if (on) renderClips();
+  else sessions.get(activeSid)?.term.focus();
+}
+
+$("#clipBtn").innerHTML = I.clip + '<span class="tb-badge" id="clipBadge" hidden></span>';
+$("#clipBtn").onclick = () => toggleClip();
+$("#clipClose").innerHTML = I.x;
+$("#clipClose").onclick = () => toggleClip(false);
+$("#clipClear").onclick = () => { clips = clips.filter((c) => c.pinned); renderClips(); };
+setInterval(() => { if ($("#clip").classList.contains("on")) renderClips(); }, 30000);
+
+/* ---------- terminal context menu ---------- */
+function openTermMenu(s, x, y) {
+  closeMenu();
+  const sel = s.term.hasSelection();
+  const live = s.state === "connected";
+  const items = [
+    { label: "Copiar", key: "Ctrl+C", icon: I.copy, off: !sel, run: () => copySel(s) },
+    { label: "Colar", key: "Ctrl+V", icon: I.paste, off: !live, run: () => paste(s) },
+    "-",
+    { label: "Área de transferência", key: "Ctrl+Shift+V", icon: I.clip, run: () => toggleClip(true) },
+    { label: "Selecionar tudo", key: "Ctrl+Shift+A", icon: I.selectAll, run: () => s.term.selectAll() },
+    { label: "Limpar tela", icon: I.eraser, run: () => s.term.clear() },
+  ];
+  const m = h("div", { class: "ctx glass-strong", id: "ctx" });
+  for (const it of items) {
+    if (it === "-") { m.append(h("div", { class: "ctx-sep" })); continue; }
+    const b = h("button", { class: "ctx-item" }, `${it.icon}<span>${it.label}</span>${it.key ? `<kbd>${it.key}</kbd>` : ""}`);
+    if (it.off) b.disabled = true;
+    b.onclick = () => { closeMenu(); it.run(); if (!it.label.startsWith("Área")) s.term.focus(); };
+    m.append(b);
+  }
+  document.body.append(m);
+  const r = m.getBoundingClientRect();
+  m.style.left = Math.min(x, innerWidth - r.width - 8) + "px";
+  m.style.top = Math.min(y, innerHeight - r.height - 8) + "px";
+}
+function closeMenu() { $("#ctx")?.remove(); }
+document.addEventListener("mousedown", (e) => { if (!e.target.closest("#ctx")) closeMenu(); });
+// capture phase: xterm swallows Escape, but an open menu should still close (without sending ESC to the server)
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && $("#ctx")) { e.preventDefault(); e.stopPropagation(); closeMenu(); }
+}, true);
+window.addEventListener("blur", closeMenu);
 
 function toast(msg) {
   const t = h("div", { class: "toast" }, esc(msg));
@@ -526,7 +680,17 @@ function toast(msg) {
 
 /* ---------- global shortcuts ---------- */
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && $("#sheet").classList.contains("on")) { e.preventDefault(); closeSheet(); }
+  const clipOn = $("#clip").classList.contains("on");
+  if (e.key === "Escape" && $("#ctx")) { e.preventDefault(); closeMenu(); }
+  else if (e.key === "Escape" && $("#sheet").classList.contains("on")) { e.preventDefault(); closeSheet(); }
+  else if (e.key === "Escape" && clipOn) { e.preventDefault(); toggleClip(false); }
+  else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "v" && e.target.tagName !== "INPUT") { e.preventDefault(); toggleClip(); }
+  // with the clipboard panel open, 1-9 pastes that item (only when typing isn't going to a terminal/input)
+  else if (clipOn && /^[1-9]$/.test(e.key) && !e.ctrlKey && !e.altKey && !e.target.closest(".xterm, input")) {
+    const ordered = [...clips.filter((c) => c.pinned), ...clips.filter((c) => !c.pinned)];
+    const c = ordered[+e.key - 1];
+    if (c) { e.preventDefault(); pasteClip(c); }
+  }
   else if (e.ctrlKey && e.key.toLowerCase() === "n") { e.preventDefault(); openEditor(); }
   else if (e.ctrlKey && e.key.toLowerCase() === "f" && !$("#sheet").classList.contains("on")) { e.preventDefault(); $("#search").focus(); }
   else if (e.ctrlKey && e.key === "Tab") { e.preventDefault(); cycle(e.shiftKey ? -1 : 1); }
@@ -538,11 +702,21 @@ document.addEventListener("contextmenu", (e) => { if (!e.target.closest("input")
 // xterm measures glyph width when a terminal opens: make sure the bundled fonts are ready first
 Promise.all([document.fonts.load('13px "Geist"'), document.fonts.load('13px "Geist Mono"'), document.fonts.load('bold 13px "Geist Mono"')])
   .catch(() => {})
-  .finally(loadHosts);
+  .finally(async () => {
+    await loadHosts();
+    // browser preview only: index.html#demo opens a sample session (used for README screenshots)
+    if (!T && location.hash.startsWith("#demo") && hosts[0]) openSessionFor(hosts[0]);
+    if (!T && location.hash === "#demo-clip") {
+      addClip("docker compose up -d", "Fedora Server", "#5ac8fa");
+      addClip("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHk3x… admin@fedora", "Fedora Server", "#5ac8fa");
+      addClip("journalctl -u nginx --since \"10 min ago\"\nsystemctl restart nginx", "Proxmox", "#ff9f0a");
+      clips[2].pinned = true;
+      addClip("192.168.1.53", "Windows", "#8e8e93");
+      toggleClip(true);
+    }
+  });
 
 /* ---------- browser preview mock (fictional data; only used outside Tauri) ---------- */
-// Open index.html#demo to auto-open a session with sample output (used for the README screenshot).
-if (!T && location.hash === "#demo") setTimeout(() => openSessionFor(hosts[0]), 300);
 
 function mockInvoke(cmd, args) {
   const db = (mockInvoke.db ||= [
