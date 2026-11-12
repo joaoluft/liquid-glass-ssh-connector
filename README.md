@@ -27,4 +27,5 @@ de uma máquina para outra. Itens podem ser fixados. O histórico fica só na me
 | Área de transferência | `Ctrl+Shift+V` · teclas `1`–`9` colam um item com o painel aberto |
 | Menu do terminal | clique direito (copiar, colar, selecionar tudo, limpar) |
 | Nova máquina / buscar | `Ctrl+N` / `Ctrl+F` |
+| Aparência (transparência, fonte) | `Ctrl+,` · engrenagem na barra de título |
 | Trocar / fechar aba | `Ctrl+Tab` / `Ctrl+Shift+W` |

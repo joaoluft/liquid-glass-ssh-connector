@@ -24,10 +24,17 @@ const I = {
   copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8.5" y="8.5" width="12" height="12" rx="2.5"/><path d="M15.5 8.5V6a2.5 2.5 0 0 0-2.5-2.5H6A2.5 2.5 0 0 0 3.5 6v7A2.5 2.5 0 0 0 6 15.5h2.5"/></svg>',
   paste: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2.5" width="8" height="4" rx="1.2"/><path d="M16 4.5h1.5a2 2 0 0 1 2 2V19a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2H8"/><path d="M12 10v7M9 14l3 3 3-3"/></svg>',
   pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v4.5M8.5 3.5h7l-1 6 3 3.5h-11l3-3.5z"/></svg>',
+  pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"/><path d="m14.5 5.5 3 3"/></svg>',
+  undo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
   pinOff: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v4.5" fill="none"/><path d="M8.5 3.5h7l-1 6 3 3.5h-11l3-3.5z"/></svg>',
   trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9.5 7V4.5h5V7M6 7l1 13h10l1-13"/></svg>',
   selectAll: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="3 3"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/></svg>',
   eraser: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-3.5-3.5a1.5 1.5 0 0 1 0-2.1L14 4.9a1.5 1.5 0 0 1 2.1 0l4 4a1.5 1.5 0 0 1 0 2.1L10 21zM21 21H10M8.5 10.5l5 5"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+  solid: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>',
+  clear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"><circle cx="12" cy="12" r="8"/></svg>',
+  chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',
   alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 8v5M12 16.5h.01"/><circle cx="12" cy="12" r="9"/></svg>',
 };
 
@@ -45,6 +52,8 @@ const h = (tag, attrs = {}, html = "") => {
 };
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const initials = (n) => (n || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+/** what goes inside an .avatar: the host's custom image, or its initials */
+const face = (host) => (host.icon && host.icon.startsWith("data:image/") ? `<img src="${esc(host.icon)}" alt="">` : esc(initials(host.name)));
 
 /* ---------- state ---------- */
 let hosts = [];
@@ -84,6 +93,7 @@ $("#search").oninput = renderHosts;
 async function loadHosts() {
   hosts = await invoke("list_hosts");
   renderHosts();
+  if ($("#prefs").classList.contains("on")) renderIconList();
   probeAll();
 }
 
@@ -103,7 +113,7 @@ function renderHosts() {
     const p = probes.get(host.id);
     const n = sessionCount(host.id);
     const el = h("div", { class: "host" + (host.id === activeHost ? " active" : ""), title: "Clique para conectar" }, `
-      <div class="avatar" style="--c:${esc(host.color)}">${esc(initials(host.name))}<span class="dot ${p === undefined ? "" : p === null ? "off" : "on"}"></span></div>
+      <div class="avatar" style="--c:${esc(host.color)}">${face(host)}<span class="dot ${p === undefined ? "" : p === null ? "off" : "on"}"></span></div>
       <div class="host-meta">
         <div class="host-name">${esc(host.name)}</div>
         <div class="host-sub">${esc(host.user ? host.user + "@" : "")}${esc(host.host)}${host.port !== 22 ? ":" + host.port : ""}</div>
@@ -129,7 +139,7 @@ function renderQuick() {
   for (const host of hosts.slice(0, 6)) {
     const p = probes.get(host.id);
     const c = h("button", { class: "qcard" }, `
-      <div class="avatar" style="--c:${esc(host.color)}">${esc(initials(host.name))}<span class="dot ${p === undefined ? "" : p === null ? "off" : "on"}"></span></div>
+      <div class="avatar" style="--c:${esc(host.color)}">${face(host)}<span class="dot ${p === undefined ? "" : p === null ? "off" : "on"}"></span></div>
       <div class="host-meta"><div class="host-name">${esc(host.name)}</div><div class="host-sub">${esc(host.host)}${p != null ? " · " + p + " ms" : ""}</div></div>`);
     c.onclick = () => openSessionFor(host);
     q.append(c);
@@ -277,7 +287,7 @@ function openSessionFor(host) {
 function createSession(sid, host) {
   const pane = h("div", { class: "pane" }, `
     <div class="pane-bar">
-      <div class="avatar" style="--c:${esc(host.color)};width:26px;height:26px;border-radius:8px;font-size:11px">${esc(initials(host.name))}</div>
+      <div class="avatar" data-r="face" style="--c:${esc(host.color)};width:26px;height:26px;border-radius:8px;font-size:11px">${face(host)}</div>
       <div><div class="pane-title">${esc(host.name)}</div></div>
       <span class="pane-sub">${esc(host.user)}@${esc(host.host)}</span>
       <span class="chip" data-r="chip"><i></i><span></span></span>
@@ -291,14 +301,14 @@ function createSession(sid, host) {
   $("#stage").append(pane);
 
   const term = new Terminal({
-    fontFamily: getComputedStyle(document.documentElement).getPropertyValue("--mono"),
-    fontSize: 13.5,
+    fontFamily: termFont(),
+    fontSize: prefs.size,
     lineHeight: 1.2,
     cursorBlink: true,
     cursorStyle: "bar",
     allowTransparency: true,
     scrollback: 4000,
-    theme: THEME,
+    theme: termTheme(),
     macOptionIsMeta: true,
     rightClickSelectsWord: false,
   });
@@ -307,7 +317,7 @@ function createSession(sid, host) {
   term.loadAddon(new WebLinksAddon.WebLinksAddon());
   term.open($(".term", pane));
 
-  const s = { sid, hostId: host.id, host, term, fit, pane, state: "idle", tab: null };
+  const s = { sid, hostId: host.id, host, term, fit, pane, state: "idle", tab: null, scheme: schemeOf().name };
   sessions.set(sid, s);
 
   // keyboard, Windows Terminal style:
@@ -318,6 +328,7 @@ function createSession(sid, host) {
     const k = e.key.toLowerCase();
     const stop = () => { e.preventDefault(); return false; };
     if (e.ctrlKey && e.shiftKey && k === "v") { toggleClip(); return stop(); }
+    if (e.ctrlKey && k === ",") { togglePrefs(); return stop(); }
     if (e.ctrlKey && k === "c" && (e.shiftKey || term.hasSelection())) { copySel(s); return stop(); }
     if (e.ctrlKey && k === "insert") { copySel(s); return stop(); }
     if ((e.ctrlKey && k === "v") || (e.shiftKey && k === "insert")) { paste(s); return stop(); }
@@ -625,6 +636,7 @@ function renderClips() {
 function toggleClip(force) {
   const p = $("#clip");
   const on = force ?? !p.classList.contains("on");
+  if (on) togglePrefs(false);
   p.classList.toggle("on", on);
   $("#clipBtn").classList.toggle("on", on);
   if (on) renderClips();
@@ -637,6 +649,273 @@ $("#clipClose").innerHTML = I.x;
 $("#clipClose").onclick = () => toggleClip(false);
 $("#clipClear").onclick = () => { clips = clips.filter((c) => c.pinned); renderClips(); };
 setInterval(() => { if ($("#clip").classList.contains("on")) renderClips(); }, 30000);
+
+/* ---------- appearance (saved in localStorage) ---------- */
+// Every TrueType font the Windows console / Windows Terminal offers for PowerShell, plus the bundled default.
+// (The console's bitmap "Raster Fonts" can't be used by a web view.)
+const FONTS = [
+  { name: "Geist Mono", tag: "padrão" },
+  { name: "Cascadia Mono" },
+  { name: "Cascadia Code", tag: "ligaduras" },
+  { name: "Consolas" },
+  { name: "Lucida Console" },
+  { name: "Courier New" },
+  { name: "Lucida Sans Typewriter" },
+  { name: "MS Gothic" },
+  { name: "NSimSun" },
+  { name: "SimSun-ExtB" },
+];
+// The color schemes built into Windows Terminal, plus the app's own.
+// c = black red green yellow blue purple cyan white, then the 8 bright variants.
+const SCHEMES = [
+  { name: "Liquid Glass", tag: "padrão" },
+  { name: "Campbell", bg: "#0C0C0C", fg: "#CCCCCC", cursor: "#FFFFFF", c: "#0C0C0C #C50F1F #13A10E #C19C00 #0037DA #881798 #3A96DD #CCCCCC #767676 #E74856 #16C60C #F9F1A5 #3B78FF #B4009E #61D6D6 #F2F2F2" },
+  { name: "Campbell Powershell", bg: "#012456", fg: "#CCCCCC", cursor: "#FFFFFF", c: "#0C0C0C #C50F1F #13A10E #C19C00 #0037DA #881798 #3A96DD #CCCCCC #767676 #E74856 #16C60C #F9F1A5 #3B78FF #B4009E #61D6D6 #F2F2F2" },
+  { name: "Vintage", bg: "#000000", fg: "#C0C0C0", cursor: "#FFFFFF", c: "#000000 #800000 #008000 #808000 #000080 #800080 #008080 #C0C0C0 #808080 #FF0000 #00FF00 #FFFF00 #0000FF #FF00FF #00FFFF #FFFFFF" },
+  { name: "One Half Dark", bg: "#282C34", fg: "#DCDFE4", cursor: "#FFFFFF", c: "#282C34 #E06C75 #98C379 #E5C07B #61AFEF #C678DD #56B6C2 #DCDFE4 #5A6374 #E06C75 #98C379 #E5C07B #61AFEF #C678DD #56B6C2 #DCDFE4" },
+  { name: "One Half Light", bg: "#FAFAFA", fg: "#383A42", cursor: "#4F525D", c: "#383A42 #E45649 #50A14F #C18301 #0184BC #A626A4 #0997B3 #FAFAFA #4F525D #DF6C75 #98C379 #E4C07A #61AFEF #C577DD #56B5C1 #FFFFFF" },
+  { name: "Solarized Dark", bg: "#002B36", fg: "#839496", cursor: "#FFFFFF", c: "#002B36 #DC322F #859900 #B58900 #268BD2 #D33682 #2AA198 #EEE8D5 #073642 #CB4B16 #586E75 #657B83 #839496 #6C71C4 #93A1A1 #FDF6E3" },
+  { name: "Solarized Light", bg: "#FDF6E3", fg: "#657B83", cursor: "#002B36", c: "#002B36 #DC322F #859900 #B58900 #268BD2 #D33682 #2AA198 #EEE8D5 #073642 #CB4B16 #586E75 #657B83 #839496 #6C71C4 #93A1A1 #FDF6E3" },
+  { name: "Tango Dark", bg: "#000000", fg: "#D3D7CF", cursor: "#FFFFFF", c: "#000000 #CC0000 #4E9A06 #C4A000 #3465A4 #75507B #06989A #D3D7CF #555753 #EF2929 #8AE234 #FCE94F #729FCF #AD7FA8 #34E2E2 #EEEEEC" },
+  { name: "Tango Light", bg: "#FFFFFF", fg: "#555753", cursor: "#000000", c: "#000000 #CC0000 #4E9A06 #C4A000 #3465A4 #75507B #06989A #D3D7CF #555753 #EF2929 #8AE234 #FCE94F #729FCF #AD7FA8 #34E2E2 #EEEEEC" },
+  { name: "Dark+", bg: "#1E1E1E", fg: "#CCCCCC", cursor: "#808080", c: "#000000 #CD3131 #0DBC79 #E5E510 #2472C8 #BC3FBC #11A8CD #E5E5E5 #666666 #F14C4C #23D18B #F5F543 #3B8EEA #D670D6 #29B8DB #E5E5E5" },
+  { name: "CGA", bg: "#000000", fg: "#AAAAAA", cursor: "#B8B8B8", c: "#000000 #AA0000 #00AA00 #AA5500 #0000AA #AA00AA #00AAAA #AAAAAA #555555 #FF5555 #55FF55 #FFFF55 #5555FF #FF55FF #55FFFF #FFFFFF" },
+  { name: "IBM 5153", bg: "#000000", fg: "#AAAAAA", cursor: "#FFFFFF", c: "#000000 #AA0000 #00AA00 #C47E00 #0000AA #AA00AA #00AAAA #AAAAAA #555555 #FF5555 #55FF55 #FFFF55 #5555FF #FF55FF #55FFFF #FFFFFF" },
+  { name: "Ottosson", bg: "#000000", fg: "#BEBEBE", cursor: "#FFFFFF", c: "#000000 #BE2C21 #3FAE3A #BE9A4A #204DBE #BB54BE #00A7B2 #BEBEBE #808080 #FF3E30 #58EA51 #FFC944 #2F6AFF #FC74FF #00E1F0 #FFFFFF" },
+];
+const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+const isLight = (hex) => { const [r, g, b] = rgb(hex); return 0.299 * r + 0.587 * g + 0.114 * b > 150; };
+const schemeOf = () => SCHEMES.find((x) => x.name === prefs.scheme) || SCHEMES[0];
+const schemeColors = (sc) => (sc.c ? sc.c.split(" ") : [THEME.black, THEME.red, THEME.green, THEME.yellow, THEME.blue, THEME.magenta, THEME.cyan, THEME.white]);
+
+/** xterm theme for the current scheme; the background stays transparent so the glass shows through */
+function termTheme() {
+  const sc = schemeOf();
+  if (!sc.c) return THEME;
+  const c = sc.c.split(" ");
+  const keys = ["black", "red", "green", "yellow", "blue", "magenta", "cyan", "white"];
+  const t = { background: "rgba(0,0,0,0)", foreground: sc.fg, cursor: sc.cursor, cursorAccent: sc.bg, selectionBackground: `rgba(${rgb(sc.fg).join(",")},0.3)` };
+  keys.forEach((k, i) => { t[k] = c[i]; t["bright" + k[0].toUpperCase() + k.slice(1)] = c[i + 8]; });
+  return t;
+}
+
+const PREF_KEY = "appearance.v1";
+// blocks: 54% reproduces the original glass (alpha .46 / .72 / .62)
+const PREF_DEFAULT = { app: 0, blocks: 54, font: "Geist Mono", size: 13.5, scheme: "Liquid Glass" };
+let prefs = { ...PREF_DEFAULT };
+try { Object.assign(prefs, JSON.parse(localStorage.getItem(PREF_KEY) || "{}")); } catch {}
+
+const termFont = () => `"${prefs.font}", "Geist Mono", Consolas, monospace`;
+
+/** true if the font is installed (its metrics differ from both generic fallbacks) */
+const fontInstalled = (() => {
+  const ctx = document.createElement("canvas").getContext("2d");
+  const w = (f) => { ctx.font = `32px ${f}`; return ctx.measureText("mmmmmmmmmmlli10WQ@").width; };
+  return (name) => ["monospace", "serif"].some((g) => w(`"${name}", ${g}`) !== w(g));
+})();
+
+function applyPrefs(save = true) {
+  const r = document.documentElement.style;
+  r.setProperty("--wall-a", String(1 - prefs.app / 100));
+  const a = 1 - prefs.blocks / 100;
+  r.setProperty("--glass", `rgba(28, 30, 38, ${a.toFixed(3)})`);
+  r.setProperty("--glass-strong", `rgba(30, 32, 42, ${Math.min(1, a + 0.26).toFixed(3)})`);
+  // the terminal area takes the scheme's background color, at the blocks' transparency
+  const sc = schemeOf();
+  const bg = sc.bg ? rgb(sc.bg).join(", ") : "12, 14, 20";
+  r.setProperty("--stage-bg", `rgba(${bg}, ${Math.min(1, a + 0.16).toFixed(3)})`);
+  $("#stage").classList.toggle("light", !!sc.bg && isLight(sc.bg));
+  for (const s of sessions.values()) {
+    if (s.scheme !== sc.name) { s.term.options.theme = termTheme(); s.scheme = sc.name; }
+    if (s.term.options.fontFamily !== termFont()) s.term.options.fontFamily = termFont();
+    if (s.term.options.fontSize !== prefs.size) s.term.options.fontSize = prefs.size;
+    if (!s.pane.hidden) try { s.fit.fit(); } catch {}
+  }
+  if (save) try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch {}
+}
+
+function syncPrefsUI() {
+  for (const [id, key] of [["app", "app"], ["blocks", "blocks"]]) {
+    const el = $("#r-" + id);
+    el.value = prefs[key];
+    el.style.setProperty("--p", prefs[key] / el.max);
+    $("#o-" + id).textContent = prefs[key] + "%";
+  }
+  $("#o-size").textContent = prefs.size + "px";
+  // each setting's "back to default" arrow shows only while it differs from the default
+  document.querySelectorAll("#prefs .rst").forEach((b) => {
+    if (!b.firstChild) b.innerHTML = I.undo;
+    b.classList.toggle("off", prefs[b.dataset.k] === PREF_DEFAULT[b.dataset.k]);
+    b.title = `Restaurar padrão (${RST_LABEL[b.dataset.k](PREF_DEFAULT[b.dataset.k])})`;
+  });
+}
+const RST_LABEL = { app: (v) => v + "%", blocks: (v) => v + "%", size: (v) => v + " px", font: (v) => v, scheme: (v) => v };
+
+/**
+ * Collapsible picker: the head shows the current choice; clicking it slides open the other options.
+ * Opening one picker closes the others.
+ */
+function renderPicker(el, items, current, row, pick) {
+  el.classList.remove("open");
+  const cur = items.find((x) => x.name === current) || items[0];
+  el.innerHTML = "";
+  const head = h("button", { class: "pick-head" + (row.cls ? " " + row.cls : "") }, row(cur) + `<span class="chev">${I.chevron}</span>`);
+  const inner = h("div", { class: "pick-inner" });
+  for (const it of items) {
+    if (it === cur) continue;
+    const b = h("button", { class: "pick-opt" + (row.cls ? " " + row.cls : "") + (row.missing?.(it) ? " missing" : ""), title: row.title?.(it) || "" }, row(it));
+    b.onclick = () => { el.classList.remove("open"); pick(it); };
+    inner.append(b);
+  }
+  head.onclick = () => {
+    const open = !el.classList.contains("open");
+    document.querySelectorAll("#prefs .picker.open").forEach((p) => p.classList.remove("open"));
+    el.classList.toggle("open", open);
+    if (open) setTimeout(() => el.scrollIntoView({ block: "nearest", behavior: "smooth" }), 320);
+  };
+  const body = h("div", { class: "pick-body" });
+  body.append(inner);
+  const headRow = h("div", { class: "pick-row" });
+  headRow.append(head, h("button", { class: "rst", "data-k": el.dataset.k }));
+  el.append(headRow, body);
+}
+
+// detection can miss fonts the web view hasn't indexed yet, so undetected ones stay selectable
+// (if the font really is missing, the terminal just falls back to Geist Mono)
+const fontMissing = (f) => f.name !== "Geist Mono" && !fontInstalled(f.name);
+const fontRow = (f) => `<span class="pname" style="font-family:'${f.name}', monospace">${esc(f.name)}</span>${fontMissing(f) ? `<span class="ptag">não detectada</span>` : f.tag ? `<span class="ptag">${f.tag}</span>` : ""}`;
+fontRow.missing = fontMissing;
+fontRow.title = (f) => (fontMissing(f) ? "Não detectada neste PC — se não estiver instalada, o terminal usa a Geist Mono" : "");
+
+const schemeRow = (sc) => `<span class="sw-strip" style="background:${sc.bg || "#0c0e14"}">${schemeColors(sc).slice(0, 8).map((c) => `<i style="background:${c}"></i>`).join("")}</span><span class="pname">${esc(sc.name)}</span>${sc.tag ? `<span class="ptag">${sc.tag}</span>` : ""}`;
+schemeRow.cls = "pick-scheme";
+
+/* ---------- server icons ----------
+   Any image the user picks is center-cropped to a square and downscaled to ICON_PX,
+   so what gets stored in hosts.json stays small (a few KB). */
+const ICON_PX = 128;
+let iconTarget = null; // host whose icon is being changed
+
+async function imageToIcon(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const w = img.naturalWidth || ICON_PX, h0 = img.naturalHeight || ICON_PX;
+    const side = Math.min(w, h0);
+    const c = document.createElement("canvas");
+    c.width = c.height = ICON_PX;
+    const ctx = c.getContext("2d");
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(img, (w - side) / 2, (h0 - side) / 2, side, side, 0, 0, ICON_PX, ICON_PX);
+    // PNG keeps transparency; fall back to JPEG if a photo would make the PNG large
+    const png = c.toDataURL("image/png");
+    return png.length < 150_000 ? png : c.toDataURL("image/jpeg", 0.9);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function setHostIcon(host, icon) {
+  try {
+    await invoke("set_host_icon", { id: host.id, icon });
+  } catch (e) {
+    return toast(String(e));
+  }
+  await loadHosts();
+  // refresh the avatar in the bar of any open terminal for this host
+  for (const s of sessions.values()) {
+    if (s.hostId !== host.id) continue;
+    s.host = hosts.find((x) => x.id === host.id) || s.host;
+    $('[data-r="face"]', s.pane).innerHTML = face(s.host);
+  }
+  renderIconList();
+  toast(icon ? `Ícone de “${host.name}” atualizado` : `“${host.name}” voltou às iniciais`);
+}
+
+async function useIconFile(host, file) {
+  if (!file || !file.type.startsWith("image/")) return toast("Escolha um arquivo de imagem");
+  try {
+    await setHostIcon(host, await imageToIcon(file));
+  } catch {
+    toast("Não consegui ler essa imagem");
+  }
+}
+
+/** one row per saved server: current icon, name, pencil to change it (and undo when it's custom) */
+function renderIconList() {
+  const list = $("#iconList");
+  list.innerHTML = "";
+  if (!hosts.length) {
+    list.append(h("div", { class: "hint", style: "padding:10px" }, "Nenhuma máquina cadastrada ainda."));
+    return;
+  }
+  for (const host of hosts) {
+    const row = h("div", { class: "icon-row" }, `
+      <div class="avatar" style="--c:${esc(host.color)}" title="Arraste uma imagem aqui">${face(host)}</div>
+      <div class="host-meta"><div class="host-name">${esc(host.name)}</div><div class="host-sub">${esc(host.host)}</div></div>
+      ${host.icon ? `<button class="icon-btn" data-a="reset" title="Voltar às iniciais">${I.undo}</button>` : ""}
+      <button class="icon-btn" data-a="edit" title="Trocar ícone">${I.pencil}</button>`);
+    row.onclick = (e) => {
+      const a = e.target.closest("[data-a]")?.dataset.a;
+      if (a === "reset") setHostIcon(host, "");
+      else if (a === "edit" || e.target.closest(".avatar")) { iconTarget = host; $("#iconFile").value = ""; $("#iconFile").click(); }
+    };
+    // dropping an image file on the row works too
+    const av = $(".avatar", row);
+    row.ondragover = (e) => { e.preventDefault(); av.classList.add("drop"); };
+    row.ondragleave = () => av.classList.remove("drop");
+    row.ondrop = (e) => { e.preventDefault(); av.classList.remove("drop"); useIconFile(host, e.dataTransfer.files[0]); };
+    list.append(row);
+  }
+}
+// HTML5 file drops are on (tauri.conf: dragDropEnabled=false) so the icon rows can take dropped images;
+// everywhere else, swallow drops so a dropped file doesn't make the webview navigate to it
+document.addEventListener("dragover", (e) => e.preventDefault());
+document.addEventListener("drop", (e) => e.preventDefault());
+$("#iconFile").onchange =(e) => { if (iconTarget) useIconFile(iconTarget, e.target.files[0]); };
+
+function renderPickers() {
+  renderPicker($("#fontPick"), FONTS, prefs.font, fontRow, (f) => { prefs.font = f.name; applyPrefs(); renderPickers(); });
+  renderPicker($("#schemePick"), SCHEMES, prefs.scheme, schemeRow, (sc) => { prefs.scheme = sc.name; applyPrefs(); renderPickers(); });
+  syncPrefsUI();
+}
+
+// one handler for every "back to default" arrow (sliders, size, font, scheme)
+$("#prefs").addEventListener("click", (e) => {
+  const k = e.target.closest(".rst")?.dataset.k;
+  if (!k) return;
+  prefs[k] = PREF_DEFAULT[k];
+  applyPrefs();
+  if (k === "font" || k === "scheme") renderPickers();
+  syncPrefsUI();
+});
+
+function togglePrefs(force) {
+  const p = $("#prefs");
+  const on = force ?? !p.classList.contains("on");
+  if (on === p.classList.contains("on")) return;
+  if (on) { toggleClip(false); renderPickers(); renderIconList(); syncPrefsUI(); }
+  p.classList.toggle("on", on);
+  $("#setBtn").classList.toggle("on", on);
+  if (!on) sessions.get(activeSid)?.term.focus();
+}
+
+for (const key of ["app", "blocks"]) {
+  $("#r-" + key).oninput = (e) => { prefs[key] = +e.target.value; applyPrefs(false); syncPrefsUI(); };
+  $("#r-" + key).onchange = () => applyPrefs();
+}
+const setSize = (d) => { prefs.size = Math.min(24, Math.max(9, Math.round((prefs.size + d) * 2) / 2)); applyPrefs(); syncPrefsUI(); };
+$("#fsDown").onclick = () => setSize(-0.5);
+$("#fsUp").onclick = () => setSize(0.5);
+$("#prefsReset").onclick = () => { prefs = { ...PREF_DEFAULT }; applyPrefs(); renderPickers(); syncPrefsUI(); };
+document.querySelectorAll("#prefs .s-ico").forEach((el) => (el.innerHTML = I[el.dataset.i]));
+$("#setBtn").innerHTML = I.gear;
+$("#setBtn").onclick = () => togglePrefs();
+$("#prefsClose").innerHTML = I.x;
+$("#prefsClose").onclick = () => togglePrefs(false);
+applyPrefs(false);
 
 /* ---------- terminal context menu ---------- */
 function openTermMenu(s, x, y) {
@@ -684,6 +963,8 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && $("#ctx")) { e.preventDefault(); closeMenu(); }
   else if (e.key === "Escape" && $("#sheet").classList.contains("on")) { e.preventDefault(); closeSheet(); }
   else if (e.key === "Escape" && clipOn) { e.preventDefault(); toggleClip(false); }
+  else if (e.key === "Escape" && $("#prefs").classList.contains("on")) { e.preventDefault(); togglePrefs(false); }
+  else if (e.ctrlKey && e.key === ",") { e.preventDefault(); togglePrefs(); }
   else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "v" && e.target.tagName !== "INPUT") { e.preventDefault(); toggleClip(); }
   // with the clipboard panel open, 1-9 pastes that item (only when typing isn't going to a terminal/input)
   else if (clipOn && /^[1-9]$/.test(e.key) && !e.ctrlKey && !e.altKey && !e.target.closest(".xterm, input")) {
@@ -741,7 +1022,8 @@ function mockInvoke(cmd, args) {
   switch (cmd) {
     case "list_hosts": return Promise.resolve(db.slice());
     case "probe": return Promise.resolve(ping[args.host] ?? null);
-    case "save_host": { const x = { ...args.input, id: args.input.id || String(Date.now()), hasSecret: false }; const i = db.findIndex((d) => d.id === x.id); i >= 0 ? (db[i] = x) : db.push(x); return Promise.resolve(x); }
+    case "save_host": { const x = { ...args.input, id: args.input.id || String(Date.now()), hasSecret: false, icon: db.find((d) => d.id === args.input.id)?.icon || "" }; const i = db.findIndex((d) => d.id === x.id); i >= 0 ? (db[i] = x) : db.push(x); return Promise.resolve(x); }
+    case "set_host_icon": { const x = db.find((d) => d.id === args.id); if (x) x.icon = args.icon; return Promise.resolve(); }
     case "connect": setTimeout(() => { args.onEvent.onmessage({ type: "status", state: "connected", message: "" }); args.onEvent.onmessage({ type: "data", data: demo }); }, 400); return Promise.resolve();
     default: return Promise.resolve(cmd === "clip_read" ? "" : null);
   }

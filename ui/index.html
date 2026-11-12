@@ -13,6 +13,7 @@
   <header class="titlebar" data-tauri-drag-region>
     <div class="title" data-tauri-drag-region><span class="app-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m7 8 4 4-4 4M13 16h5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>SSH Connector</div>
     <button class="tb-btn" id="clipBtn" title="Área de transferência (Ctrl+Shift+V)"></button>
+    <button class="tb-btn" id="setBtn" title="Aparência (Ctrl+,)"></button>
     <div class="caption">
       <button class="cap" data-win="min" title="Minimizar"><svg viewBox="0 0 10 10"><path d="M0 5.5h10"/></svg></button>
       <button class="cap" data-win="max" title="Maximizar">
@@ -64,6 +65,39 @@
     </div>
     <div class="clip-list" id="clipList"></div>
     <div class="clip-foot">Clique em um item para colar no terminal ativo · <kbd>1</kbd>–<kbd>9</kbd> atalhos<br>Fica só na memória — some ao fechar o app.</div>
+  </aside>
+
+  <aside class="prefs glass-strong" id="prefs" aria-label="Aparência">
+    <div class="clip-head">
+      <div>
+        <div class="clip-title">Aparência</div>
+        <div class="clip-sub">Salvo neste PC</div>
+      </div>
+      <span class="grow"></span>
+      <button class="pbtn" id="prefsReset">Restaurar</button>
+      <button class="icon-btn" id="prefsClose" title="Fechar (Esc)"></button>
+    </div>
+    <div class="prefs-body">
+      <div class="pgroup">
+        <div class="plabel"><span>Transparência do app</span><span class="pval"><button class="rst" data-k="app"></button><output id="o-app"></output></span></div>
+        <div class="slider-row"><span class="s-ico" data-i="solid"></span><input type="range" class="ios-range" id="r-app" min="0" max="90" step="1"><span class="s-ico" data-i="clear"></span></div>
+        <div class="plabel"><span>Transparência dos blocos</span><span class="pval"><button class="rst" data-k="blocks"></button><output id="o-blocks"></output></span></div>
+        <div class="slider-row"><span class="s-ico" data-i="solid"></span><input type="range" class="ios-range" id="r-blocks" min="0" max="100" step="1"><span class="s-ico" data-i="clear"></span></div>
+      </div>
+      <div class="psec">Fonte do terminal</div>
+      <div class="pgroup flush picker" id="fontPick" data-k="font"></div>
+      <div class="pgroup">
+        <div class="plabel"><span>Tamanho</span>
+          <span class="pval"><button class="rst" data-k="size"></button><div class="stepper"><button id="fsDown" title="Diminuir">−</button><output id="o-size"></output><button id="fsUp" title="Aumentar">+</button></div></span>
+        </div>
+      </div>
+      <div class="psec">Esquema de cores</div>
+      <div class="pgroup flush picker" id="schemePick" data-k="scheme"></div>
+      <div class="psec">Ícones dos servidores</div>
+      <div class="pgroup flush" id="iconList"></div>
+      <p class="phint">Sugestão: imagem quadrada de <b>128 × 128 px</b> ou maior (PNG, JPG, WebP ou SVG). Imagens retangulares são recortadas no centro.</p>
+      <input type="file" id="iconFile" accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif,image/bmp" hidden>
+    </div>
   </aside>
 
   <div class="scrim" id="scrim"></div>

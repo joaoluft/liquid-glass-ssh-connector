@@ -15,6 +15,9 @@ pub struct HostEntry {
     pub auth: String,
     pub key_path: String,
     pub color: String,
+    /// Custom avatar as a `data:image/...` URL (already resized by the UI); empty = initials.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub icon: String,
     /// DPAPI-protected secret (password or key passphrase), base64-less hex.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub secret: Option<String>,

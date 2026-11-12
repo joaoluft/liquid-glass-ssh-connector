@@ -11,6 +11,8 @@
   --hair-2: rgba(255, 255, 255, 0.16);
   --glass: rgba(28, 30, 38, 0.46);
   --glass-strong: rgba(30, 32, 42, 0.72);
+  --stage-bg: rgba(12, 14, 20, 0.62);
+  --wall-a: 1; /* window background opacity (Aparência → Transparência do app) */
   --fill: rgba(255, 255, 255, 0.06);
   --fill-2: rgba(255, 255, 255, 0.1);
   --accent: #0a84ff;
@@ -56,7 +58,7 @@ svg { display: block; }
 
 /* ---------- wallpaper: static gradients only (no animated blur = cheap) ---------- */
 .wallpaper {
-  position: fixed; inset: 0; z-index: -1; border-radius: inherit;
+  position: fixed; inset: 0; z-index: -1; border-radius: inherit; opacity: var(--wall-a);
   background:
     radial-gradient(60% 55% at 12% 8%, rgba(10, 132, 255, 0.32), transparent 70%),
     radial-gradient(50% 50% at 92% 18%, rgba(191, 90, 242, 0.24), transparent 70%),
@@ -201,7 +203,7 @@ body.max .cap .i-restore { display: block; }
 .tab .x:hover { background: var(--fill-2); opacity: 1; }
 .tab .x svg { width: 11px; height: 11px; }
 
-.stage { flex: 1; min-height: 0; overflow: hidden; background: rgba(12, 14, 20, 0.62); }
+.stage { flex: 1; min-height: 0; overflow: hidden; background: var(--stage-bg); }
 
 /* ---------- terminal pane ---------- */
 .pane { position: absolute; inset: 0; display: flex; flex-direction: column; }
@@ -413,3 +415,112 @@ kbd {
 .ctx-item:disabled { opacity: .35; }
 .ctx-sep { height: 1px; margin: 5px 8px; background: var(--hair); }
 @keyframes menu { from { opacity: 0; transform: scale(.96) translateY(-4px); } }
+
+/* ---------- appearance panel ---------- */
+.prefs {
+  position: fixed; top: 52px; right: 10px; width: 320px; max-height: calc(100% - 62px); z-index: 60;
+  display: flex; flex-direction: column; border-radius: 20px;
+  /* fixed opacity: the panel must stay readable whatever the sliders say */
+  background: rgba(30, 32, 42, 0.86);
+  transform: translateY(-8px) scale(.97); transform-origin: top right; opacity: 0; pointer-events: none;
+  transition: transform .32s var(--ease), opacity .2s;
+}
+.prefs.on { transform: none; opacity: 1; pointer-events: auto; }
+.prefs-body { overflow-y: auto; padding: 2px 12px 14px; display: grid; gap: 8px; }
+.prefs-body::-webkit-scrollbar { width: 0; }
+.pgroup {
+  padding: 10px 12px; border-radius: 14px; display: grid; gap: 6px;
+  background: rgba(255,255,255,.05); box-shadow: inset 0 1px 0 rgba(255,255,255,.07), inset 0 0 0 1px var(--hair);
+}
+.pgroup.flush { padding: 4px; gap: 0; }
+.psec { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); padding: 8px 6px 0; }
+.plabel { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; font-weight: 550; }
+.plabel output { font: 11.5px var(--mono); color: var(--text-3); }
+.slider-row { display: flex; align-items: center; gap: 10px; padding-bottom: 6px; }
+.slider-row + .plabel { padding-top: 6px; border-top: 1px solid var(--hair); }
+.s-ico { width: 14px; height: 14px; flex: none; color: var(--text-3); }
+.s-ico svg { width: 14px; height: 14px; }
+
+/* iOS-style slider: thin track, accent fill up to the thumb, big white knob */
+.ios-range {
+  --p: .5; /* 0..1, set from JS */
+  flex: 1; height: 28px; margin: 0; background: none; -webkit-appearance: none; appearance: none; cursor: default;
+}
+.ios-range:focus { outline: none; }
+.ios-range::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 2px;
+  /* fill ends under the knob's center, which travels from 12px to (width - 12px) */
+  --stop: calc(12px + (100% - 24px) * var(--p));
+  background: linear-gradient(90deg, var(--accent) var(--stop), rgba(255,255,255,.18) var(--stop));
+}
+.ios-range::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 24px; height: 24px; margin-top: -10px; border-radius: 50%; background: #fff;
+  box-shadow: 0 0.5px 1px rgba(0,0,0,.25), 0 3px 8px rgba(0,0,0,.35), 0 0 0 .5px rgba(0,0,0,.08);
+  transition: transform .18s var(--ease);
+}
+.ios-range:active::-webkit-slider-thumb { transform: scale(1.12); }
+.ios-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 3px 8px rgba(0,0,0,.35), 0 0 0 3px rgba(10,132,255,.45); }
+
+/* collapsible picker: the head shows the current choice, clicking it slides the other options open */
+.pick-head, .pick-opt {
+  width: 100%; display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; border-radius: 10px;
+  text-align: left; transition: background .12s;
+}
+.pick-head:hover, .pick-opt:hover { background: var(--fill-2); }
+.pick-head .chev { width: 14px; height: 14px; flex: none; color: var(--text-3); transition: transform .3s var(--ease); }
+.pick-head .chev svg { width: 14px; height: 14px; }
+.picker.open .pick-head .chev { transform: rotate(180deg); }
+.pick-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .32s var(--ease); }
+.picker.open .pick-body { grid-template-rows: 1fr; }
+.pick-inner { min-height: 0; overflow: hidden; }
+.pick-inner::before { content: ""; display: block; height: 1px; margin: 4px 8px; background: var(--hair); }
+.pname { flex: 1; min-width: 0; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ptag { font: 10.5px var(--sans); color: var(--text-3); flex: none; }
+.pick-opt.missing .pname { opacity: .45; }
+.pick-scheme .pname { font-size: 12.5px; font-weight: 550; }
+/* mini preview of a color scheme: its background with the 8 normal colors */
+.sw-strip { display: flex; gap: 2px; padding: 4px 5px; border-radius: 6px; flex: none; box-shadow: inset 0 0 0 1px var(--hair-2); }
+.sw-strip i { width: 6px; height: 12px; border-radius: 2px; }
+
+/* light color schemes: the terminal area turns light, so its chrome switches to dark text */
+.stage.light {
+  color: rgba(0,0,0,.86); --text: rgba(0,0,0,.86); --text-2: rgba(0,0,0,.6); --text-3: rgba(0,0,0,.42);
+  --hair: rgba(0,0,0,.1); --hair-2: rgba(0,0,0,.16); --fill: rgba(0,0,0,.05); --fill-2: rgba(0,0,0,.08);
+}
+.stage.light .term .xterm-viewport::-webkit-scrollbar-thumb { background: rgba(0,0,0,.18); }
+.stage.light .overlay { background: rgba(255,255,255,.45); }
+.stage.light .spinner { border-color: rgba(0,0,0,.12); border-top-color: rgba(0,0,0,.7); }
+
+.stepper { display: flex; align-items: center; border-radius: 9px; background: rgba(0,0,0,.25); box-shadow: inset 0 0 0 1px var(--hair); }
+.stepper button { width: 30px; height: 26px; font-size: 15px; color: var(--text-2); border-radius: 8px; }
+.stepper button:hover { background: var(--fill-2); color: var(--text); }
+.stepper output { min-width: 38px; text-align: center; font: 12px var(--mono); color: var(--text); }
+
+/* custom host images fill the avatar; the status dot stays on top */
+.avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; pointer-events: none; }
+.avatar .dot { z-index: 1; }
+
+/* ---------- appearance: server icons ---------- */
+.icon-row { display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 8px; border-radius: 10px; }
+.icon-row:hover { background: var(--fill); }
+.icon-row .avatar { width: 32px; height: 32px; font-size: 12px; }
+.icon-row .avatar.drop { box-shadow: 0 0 0 2px var(--accent); }
+.icon-row .host-meta { flex: 1; min-width: 0; }
+.icon-row .icon-btn { width: 26px; height: 26px; flex: none; }
+.icon-row .icon-btn svg { width: 14px; height: 14px; }
+.phint { font-size: 11px; line-height: 1.5; color: var(--text-3); padding: 0 6px; margin-top: -2px; }
+.phint b { color: var(--text-2); font-weight: 600; }
+
+/* per-setting "back to default" arrow: only shown while the value differs from the default */
+.pval { display: flex; align-items: center; gap: 6px; }
+.rst {
+  width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; flex: none; color: var(--text-3);
+  transition: background .15s, color .15s, transform .15s var(--ease);
+  animation: pop .2s var(--ease);
+}
+.rst svg { width: 13px; height: 13px; }
+.rst:hover { background: var(--fill-2); color: var(--text); }
+.rst:active { transform: scale(.9); }
+.rst.off { display: none; }
+.pick-row { display: flex; align-items: center; gap: 2px; padding-right: 6px; }
+.pick-row .pick-head { flex: 1; min-width: 0; }
