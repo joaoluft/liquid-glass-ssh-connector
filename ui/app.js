@@ -535,7 +535,10 @@ document.addEventListener("keydown", (e) => {
 });
 document.addEventListener("contextmenu", (e) => { if (!e.target.closest("input")) e.preventDefault(); });
 
-loadHosts();
+// xterm measures glyph width when a terminal opens: make sure the bundled fonts are ready first
+Promise.all([document.fonts.load('13px "Geist"'), document.fonts.load('13px "Geist Mono"'), document.fonts.load('bold 13px "Geist Mono"')])
+  .catch(() => {})
+  .finally(loadHosts);
 
 /* ---------- browser preview mock (fictional data; only used outside Tauri) ---------- */
 // Open index.html#demo to auto-open a session with sample output (used for the README screenshot).
