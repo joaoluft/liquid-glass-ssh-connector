@@ -296,14 +296,14 @@ function createSession(sid, host) {
   const pane = h("div", { class: "pane" }, `
     <div class="pane-bar">
       <div class="avatar" data-r="face" style="--c:${esc(host.color)};width:26px;height:26px;border-radius:8px;font-size:11px">${face(host)}</div>
-      <div><div class="pane-title">${esc(host.name)}</div></div>
+      <div class="pane-name"><div class="pane-title">${esc(host.name)}</div></div>
       <span class="pane-sub">${esc(host.user)}@${esc(host.host)}</span>
       <span class="chip" data-r="chip"><i></i><span></span></span>
       <button class="crumb" data-r="crumb" hidden>${I.folder}<span></span></button>
       <span class="gitchip" data-r="git" hidden></span>
       <span class="grow"></span>
       <button class="pbtn" data-r="find" title="Buscar no terminal (Ctrl+Shift+F)">${I.search}</button>
-      <button class="pbtn" data-r="key" title="Gera uma chave e instala no servidor: próximas conexões sem senha">${I.key}Login sem senha</button>
+      <button class="pbtn" data-r="key" title="Gera uma chave e instala no servidor: próximas conexões sem senha">${I.key}<span class="lbl">Login sem senha</span></button>
       <button class="pbtn" data-r="re" title="Reconectar">${I.redo}</button>
       <button class="pbtn" data-r="off" title="Desconectar">${I.power}</button>
     </div>
@@ -985,7 +985,7 @@ const PREF_DEFAULT = {
   scheme: "Liquid Glass", cursorStyle: "bar", cursorBlink: true, padding: 14, contrast: false, scrollback: 4000,
   autocomplete: true, remoteHistory: true, smoothScroll: true, renderer: "webgl",
   // Prompt
-  promptOn: true, promptStyle: "flags", promptOpacity: 62, promptTwoLines: true, promptDir: "full",
+  promptOn: true, promptStyle: "glass", promptOpacity: 30, promptTwoLines: true, promptDir: "full",
   pUser: true, pDir: true, pGit: true, pDur: true, pStatus: true, pTime: false,
   pcUser: "#64748b", pcDir: "#3b82f6", pcGit: "#22c55e", pcGitDirty: "#eab308", pcDur: "#a855f7", pcErr: "#ef4444", pcTime: "#64748b",
   // Interface
@@ -994,6 +994,10 @@ const PREF_DEFAULT = {
 };
 let prefs = { ...PREF_DEFAULT };
 try { Object.assign(prefs, JSON.parse(localStorage.getItem(PREF_KEY) || "{}")); } catch {}
+if (!prefs.promptV) {
+  if (prefs.promptStyle === "flags" && prefs.promptOpacity === 62) { prefs.promptStyle = "glass"; prefs.promptOpacity = 30; }
+  prefs.promptV = 2;
+}
 
 const termFont = () => `"${prefs.font}", "Geist Mono", Consolas, monospace`;
 const termOptions = () => ({
@@ -1293,7 +1297,12 @@ function promptPalette() {
   for (const [k, id] of PROMPT_COLORS) {
     const base = /^#[0-9a-f]{6}$/i.test(prefs[k]) ? prefs[k] : PREF_DEFAULT[k];
     const bg = prefs.promptStyle === "plain" ? rgb(base) : blendHex(base, a);
-    out[id] = { bg, fg: contrastFg(bg) };
+    let fg = contrastFg(bg);
+    if (prefs.promptStyle === "glass") {
+      // tinted text: the flag's own color, lifted toward white on dark terminals (toward black on light ones)
+      fg = isLight(termBg()) ? mix(rgb(base), [0, 0, 0], 0.45) : mix(rgb(base), [255, 255, 255], 0.42);
+    }
+    out[id] = { bg, fg };
   }
   return out;
 }
@@ -1365,6 +1374,8 @@ function promptPreviewHtml(sample) {
   let out = "";
   if (style === "plain") {
     out = segs.map(([id, t]) => `<b style="color:${css(pal[id].bg)}">${esc(t)}</b>`).join(" ");
+  } else if (style === "glass") {
+    out = segs.map(([id, t]) => `<span class="pp-pill" style="background:${css(pal[id].bg)};color:${css(pal[id].fg)}">${esc(t)}</span>`).join("");
   } else {
     segs.forEach(([id, t], i) => {
       const c = pal[id], next = segs[i + 1] && pal[segs[i + 1][0]];
@@ -1433,7 +1444,7 @@ function tabPrompt() {
     pgroup(ctlToggle("promptOn", "Prompt moderno", "Pasta, git, duração e erro em “flags” coloridas")),
     psec("Estilo"),
     pgroup(
-      ctlSeg("promptStyle", "Formato", [["flags", "Setas"], ["round", "Pílulas"], ["slant", "Diagonal"], ["plain", "Texto"]]),
+      ctlSeg("promptStyle", "Formato", [["glass", "Vidro"], ["flags", "Setas"], ["round", "Pílulas"], ["slant", "Diagonal"], ["plain", "Texto"]]),
       prefs.promptStyle === "plain" ? null : op,
       ctlSeg("promptTwoLines", "Comando", [[true, "Linha de baixo"], [false, "Mesma linha"]]),
       ctlSeg("promptDir", "Pasta", [["full", "Completa"], ["short", "Curta"]])),
@@ -1878,12 +1889,13 @@ function startFlood() {
 function mockPrompt(cfg, dir, git, ec = 0) {
   if (!cfg) return "\x1b[1;32madmin@fedora\x1b[0m:\x1b[1;34m" + dir + "\x1b[0m$ ";
   const style = cfg.style, segsOn = cfg.segs.split(" ");
-  const sep = { flags: "\ue0b0", round: "\ue0b4", slant: "\ue0bc", plain: "" }[style], cap = { round: "\ue0b6", slant: "\ue0ba" }[style] || "";
+  const sep = { flags: "\ue0b0", round: "\ue0b4", slant: "\ue0bc", plain: "", glass: "" }[style], cap = { round: "\ue0b6", slant: "\ue0ba" }[style] || "";
   const e = (c) => `\x1b[${c}m`;
   let out = "", prev = "";
   const seg = (id, text) => {
     const bg = cfg[`c_${id}_bg`], fg = cfg[`c_${id}_fg`];
     if (style === "plain") { out += (out ? " " : "") + e(`1;38;2;${bg}`) + text + e(0); return; }
+    if (style === "glass") { out += (out ? " " : "") + e(`0;38;2;${bg}`) + "\ue0b6" + e(`0;48;2;${bg};38;2;${fg}`) + text + e(`0;38;2;${bg}`) + "\ue0b4" + e(0); prev = bg; return; }
     out += prev ? e(`38;2;${prev};48;2;${bg}`) + sep : cap ? e(`0;38;2;${bg}`) + cap : "";
     out += e(`0;48;2;${bg};38;2;${fg}`) + ` ${text} `;
     prev = bg;
@@ -1893,7 +1905,7 @@ function mockPrompt(cfg, dir, git, ec = 0) {
   const dirty = git && (git.modified || git.untracked);
   if (git && segsOn.includes("git")) seg(dirty ? "gitd" : "git", `⎇ ${git.branch}${git.modified ? " ●" + git.modified : ""}${git.untracked ? " ?" + git.untracked : ""}`);
   if (ec && segsOn.includes("status")) seg("err", `✘ ${ec}`);
-  if (style !== "plain" && prev) out += e(`0;38;2;${prev}`) + (sep || "\ue0b0") + e(0);
+  if (style !== "plain" && style !== "glass" && prev) out += e(`0;38;2;${prev}`) + (sep || "\ue0b0") + e(0);
   const osc = `\x1b]6973;cwd=${dir}\x07\x1b]6973;git=${git ? `${git.branch}|0|${git.modified || 0}|${git.untracked || 0}|0|0|0` : ""}\x07`;
   const line2 = cfg.two === "1" ? "\r\n" + e(`1;38;2;${ec ? cfg.c_bad : cfg.c_ok}`) + "❯" + e(0) + " " : " ";
   return osc + "\r\n" + out + line2;

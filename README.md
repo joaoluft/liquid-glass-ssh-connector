@@ -24,17 +24,19 @@ A engrenagem na barra de título (ou `Ctrl+,`) abre o painel de personalização
 - **Exportar / Importar** o tema pela área de transferência para levar a outro PC
 
 ## Prompt moderno
-Ao conectar, o terminal ganha um prompt em "flags" no estilo powerline: **usuário@máquina ▶ pasta ▶ git**
+Ao conectar, o terminal ganha um prompt em "flags" de vidro (pílulas arredondadas e translúcidas): **usuário@máquina · pasta · git**
 (branch e alterações: `✚` preparados, `●` modificados, `?` novos, `⇡⇣` à frente/atrás), duração de comandos
 longos e código de erro; o `❯` fica vermelho quando o último comando falha. A barra do terminal mostra a
 pasta atual (clique para copiar) e a branch, e a aba mostra o nome da pasta.
 
-- Personalizável em **Personalizar → Prompt**: formato (setas, pílulas, diagonal ou texto), opacidade das
+- Personalizável em **Personalizar → Prompt**: formato (vidro, setas powerline, pílulas, diagonal ou texto), opacidade das
   flags, o que mostrar, cor de cada flag, comando na mesma linha ou na de baixo, pasta completa ou curta —
   com pré-visualização ao vivo. Mudanças valem para as próximas conexões.
 - **Nada é alterado no servidor:** o prompt vale só para a sessão do app (o bash é iniciado com uma
   configuração temporária que se apaga sozinha). Funciona com bash; zsh e fish mantêm o prompt de vocês.
 - As setas são desenhadas pela GPU (renderizador WebGL), sem precisar instalar fontes especiais.
+- O prompt se ajusta à largura do terminal (esconde/encurta partes menos importantes), e a barra do
+  terminal se adapta à largura da janela.
 
 ## Buscar e sugestões
 - **Lupa** (ícone no topo do terminal ou `Ctrl+Shift+F`): busca na saída e no histórico de rolagem, destaca todas as ocorrências, mostra "3 de 12", com maiúsculas/minúsculas, palavra inteira e regex. `Enter`/`Shift+Enter` ou `F3` navegam.

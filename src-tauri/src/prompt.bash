@@ -15,7 +15,7 @@ elif [ -f ~/.profile ]; then . ~/.profile
 fi
 
 # defaults (overridden by the app's config lines above)
-: "${__sshc_style:=flags}" "${__sshc_two:=1}" "${__sshc_dirmode:=full}"
+: "${__sshc_style:=glass}" "${__sshc_two:=1}" "${__sshc_dirmode:=full}"
 : "${__sshc_segs:=user dir git dur status}"
 : "${__sshc_c_user_bg:=58;62;74}" "${__sshc_c_user_fg:=230;232;238}"
 : "${__sshc_c_dir_bg:=40;90;160}" "${__sshc_c_dir_fg:=240;244;250}"
@@ -28,6 +28,7 @@ fi
 
 # separators (U+E0B0… powerline shapes; the app's GPU renderer draws them without special fonts)
 case "$__sshc_style" in
+  glass) __sshc_sep=""; __sshc_cap="" ;;
   round) __sshc_sep=$''; __sshc_cap=$'' ;;
   slant) __sshc_sep=$''; __sshc_cap=$'' ;;
   plain) __sshc_sep=""; __sshc_cap="" ;;
@@ -42,6 +43,12 @@ __sshc_e() { printf '\001\033[%sm\002' "$1"; }
 # append one segment: bg fg text
 __sshc_seg() {
   local bg=$1 fg=$2 text=$3
+  # "glass": separate, fully rounded pills with a gap (translucent tint + tinted text come from the app)
+  if [ "$__sshc_style" = glass ]; then
+    __sshc_out+="${__sshc_out:+ }$(__sshc_e "0;38;2;${bg}")$(__sshc_e "0;48;2;${bg};38;2;${fg}")${text}$(__sshc_e "0;38;2;${bg}")$(__sshc_e 0)"
+    __sshc_prev=$bg
+    return
+  fi
   if [ "$__sshc_style" = plain ]; then
     __sshc_out+="${__sshc_out:+ }$(__sshc_e "1;38;2;${bg}")${text}$(__sshc_e 0)"
     return
@@ -55,7 +62,7 @@ __sshc_seg() {
   __sshc_prev=$bg
 }
 __sshc_end() {
-  if [ "$__sshc_style" != plain ] && [ -n "$__sshc_prev" ]; then
+  if [ "$__sshc_style" != plain ] && [ "$__sshc_style" != glass ] && [ -n "$__sshc_prev" ]; then
     __sshc_out+="$(__sshc_e "0;38;2;${__sshc_prev}")${__sshc_sep:-$''}$(__sshc_e 0)"
   fi
 }
@@ -98,33 +105,59 @@ __sshc_preexec() {
 }
 trap '__sshc_preexec' DEBUG
 
+# folder shortened to the last two parts ("…/b/c"), or just the last one
+__sshc_short() {
+  local IFS=/ parts; read -ra parts <<< "$1"
+  if [ "$2" = 1 ]; then [ "${#parts[@]}" -gt 1 ] && printf '%s' "${parts[-1]}" || printf '%s' "$1"
+  elif [ "${#parts[@]}" -gt 3 ]; then printf '…/%s/%s' "${parts[-2]}" "${parts[-1]}"
+  else printf '%s' "$1"; fi
+}
+# visible width of the collected segments (text + padding + separator)
+__sshc_width() { local w=0 t; for t in "${__sshc_txt[@]}"; do [ -n "$t" ] && w=$((w + ${#t} + 3)); done; __sshc_w=$w; }
+
 __sshc_prompt() {
   local ec=${__sshc_ec:-0} d dir
   __sshc_out=""; __sshc_prev=""
   dir="${PWD/#$HOME/\~}"
 
-  __sshc_has user && __sshc_seg "$__sshc_c_user_bg" "$__sshc_c_user_fg" "${USER:-$(id -un)}@${HOSTNAME%%.*}"
-  if __sshc_has dir; then
-    local shown=$dir
-    if [ "$__sshc_dirmode" = short ]; then
-      local IFS=/ parts; read -ra parts <<< "$dir"
-      [ "${#parts[@]}" -gt 3 ] && shown="…/${parts[-2]}/${parts[-1]}"
-    fi
-    __sshc_seg "$__sshc_c_dir_bg" "$__sshc_c_dir_fg" "$shown"
-  fi
+  # collect segments first (index = draw order), then fit them to the terminal width
+  local u="" f="" g="" du="" er="" tm=""
+  __sshc_has user && u="${USER:-$(id -un)}@${HOSTNAME%%.*}"
+  if __sshc_has dir; then f=$dir; [ "$__sshc_dirmode" = short ] && f=$(__sshc_short "$dir"); fi
   __sshc_git
-  if __sshc_has git && [ -n "$__sshc_gtext" ]; then
-    if [ "$__sshc_gdirty" -eq 1 ]; then __sshc_seg "$__sshc_c_gitd_bg" "$__sshc_c_gitd_fg" "$__sshc_gtext"
-    else __sshc_seg "$__sshc_c_git_bg" "$__sshc_c_git_fg" "$__sshc_gtext"; fi
-  fi
+  __sshc_has git && g=$__sshc_gtext
   if __sshc_has dur && [ -n "$__sshc_t0" ]; then
     d=$((SECONDS - __sshc_t0))
-    if [ "$d" -ge 60 ]; then __sshc_seg "$__sshc_c_dur_bg" "$__sshc_c_dur_fg" "$((d / 60))m$((d % 60))s"
-    elif [ "$d" -ge 3 ]; then __sshc_seg "$__sshc_c_dur_bg" "$__sshc_c_dur_fg" "${d}s"; fi
+    if [ "$d" -ge 60 ]; then du="$((d / 60))m$((d % 60))s"; elif [ "$d" -ge 3 ]; then du="${d}s"; fi
   fi
   unset __sshc_t0
-  __sshc_has status && [ "$ec" -ne 0 ] && __sshc_seg "$__sshc_c_err_bg" "$__sshc_c_err_fg" "✘ ${ec}"
-  if __sshc_has time; then local now; printf -v now '%(%H:%M)T' -1; __sshc_seg "$__sshc_c_time_bg" "$__sshc_c_time_fg" "$now"; fi
+  __sshc_has status && [ "$ec" -ne 0 ] && er="✘ ${ec}"
+  __sshc_has time && printf -v tm '%(%H:%M)T' -1
+
+  # too wide for the terminal? drop/shorten the least important parts first (git and errors stay)
+  local room=$(( ${COLUMNS:-80} - 3 )) step
+  local br=${__sshc_graw%%|*}
+  for step in time user short dur leaf gitbr gitcut nodir; do
+    __sshc_txt=("$u" "$f" "$g" "$du" "$er" "$tm"); __sshc_width
+    [ "$__sshc_w" -le "$room" ] && break
+    case $step in
+      time) tm="" ;; user) u="" ;; short) [ -n "$f" ] && f=$(__sshc_short "$dir") ;;
+      dur) du="" ;; leaf) [ -n "$f" ] && f=$(__sshc_short "$dir" 1) ;;
+      gitbr) [ -n "$g" ] && g=$'⎇'" ${br}" ;;                       # branch only (color still shows dirty)
+      gitcut) [ -n "$g" ] && [ "${#br}" -gt 12 ] && g=$'⎇'" ${br:0:11}…" ;;
+      nodir) f="" ;;
+    esac
+  done
+
+  [ -n "$u" ] && __sshc_seg "$__sshc_c_user_bg" "$__sshc_c_user_fg" "$u"
+  [ -n "$f" ] && __sshc_seg "$__sshc_c_dir_bg" "$__sshc_c_dir_fg" "$f"
+  if [ -n "$g" ]; then
+    if [ "$__sshc_gdirty" -eq 1 ]; then __sshc_seg "$__sshc_c_gitd_bg" "$__sshc_c_gitd_fg" "$g"
+    else __sshc_seg "$__sshc_c_git_bg" "$__sshc_c_git_fg" "$g"; fi
+  fi
+  [ -n "$du" ] && __sshc_seg "$__sshc_c_dur_bg" "$__sshc_c_dur_fg" "$du"
+  [ -n "$er" ] && __sshc_seg "$__sshc_c_err_bg" "$__sshc_c_err_fg" "$er"
+  [ -n "$tm" ] && __sshc_seg "$__sshc_c_time_bg" "$__sshc_c_time_fg" "$tm"
   __sshc_end
 
   if [ "$__sshc_two" = 1 ]; then

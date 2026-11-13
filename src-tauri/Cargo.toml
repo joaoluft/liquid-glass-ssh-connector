@@ -1,6 +1,6 @@
 [package]
 name = "ssh-connector"
-version = "1.6.0"
+version = "1.7.0"
 description = "SSH Connector — cliente SSH minimalista"
 edition = "2021"
 

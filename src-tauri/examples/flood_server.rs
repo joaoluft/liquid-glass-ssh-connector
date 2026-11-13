@@ -60,8 +60,12 @@ impl server::Handler for Flood {
         if cmd.contains("SSHC_RC") {
             use tokio::io::AsyncReadExt;
             let bash = std::env::var("FLOOD_BASH").unwrap_or_else(|_| r"C:\Program Files\Git\bin\bash.exe".into());
+            // hand the command over in a file: Windows argv quoting (MSYS treats ' specially) would mangle
+            // it, while a real sshd passes it verbatim to `$SHELL -c`
+            let script = std::env::temp_dir().join(format!("flood_cmd_{}.sh", std::process::id()));
+            std::fs::write(&script, &cmd).expect("write cmd");
             let mut child = tokio::process::Command::new(bash)
-                .arg("-c").arg(&cmd)
+                .arg(script.to_string_lossy().replace('\\', "/"))
                 .env("SHELL", "/usr/bin/bash")
                 .env("HOME", std::env::var("FLOOD_HOME").unwrap_or_default())
                 .current_dir(std::env::var("FLOOD_HOME").unwrap_or_else(|_| ".".into()))
