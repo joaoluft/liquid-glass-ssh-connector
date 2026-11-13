@@ -3956,7 +3956,7 @@ dependencies = [
 
 [[package]]
 name = "ssh-connector"
-version = "1.4.0"
+version = "1.5.0"
 dependencies = [
  "arboard",
  "russh",
@@ -3966,6 +3966,8 @@ dependencies = [
  "tauri-build",
  "tokio",
  "uuid",
+ "webview2-com",
+ "windows-core 0.62.2",
  "windows-sys 0.59.0",
 ]
 

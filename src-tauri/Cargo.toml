@@ -1,6 +1,6 @@
 [package]
 name = "ssh-connector"
-version = "1.4.0"
+version = "1.5.0"
 description = "SSH Connector — cliente SSH minimalista"
 edition = "2021"
 
@@ -16,6 +16,9 @@ russh = { version = "0.54", default-features = false, features = ["ring", "rsa",
 arboard = { version = "3", default-features = false }
 windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security_Cryptography", "Win32_System_Memory"] }
 uuid = { version = "1", features = ["v4"] }
+# same WebView2 bindings Tauri uses, to drop rendering/memory while the window is minimized
+webview2-com = "0.39"
+windows-core = "0.62"
 
 [features]
 default = ["custom-protocol"]

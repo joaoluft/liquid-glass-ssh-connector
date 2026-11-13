@@ -155,8 +155,11 @@ function renderQuick() {
 
 async function probeAll() {
   if (document.hidden) return;
+  const before = hosts.map((x) => probes.get(x.id) == null).join();
   await Promise.all(hosts.map(async (host) => probes.set(host.id, await invoke("probe", { host: host.host, port: host.port }))));
-  renderHosts();
+  // only online/offline changes touch the list; latency numbers live in the quick cards and terminal chips
+  if (hosts.map((x) => probes.get(x.id) == null).join() !== before) renderHosts();
+  else if (!$("#empty").hidden) renderQuick();
   for (const s of sessions.values()) updateBar(s);
 }
 setInterval(probeAll, 20000);
@@ -367,8 +370,13 @@ function createSession(sid, host) {
     openTermMenu(s, e.clientX, e.clientY);
   });
 
-  term.onData((d) => { if (s.state !== "connected") return; trackInput(s, d); invoke("write", { sessionId: s.sid, data: d }); });
-  term.onResize(({ cols, rows }) => { if (s.state === "connected") invoke("resize", { sessionId: s.sid, cols, rows }); });
+  term.onData((d) => { if (s.state !== "connected") return; cursorSolid(s); trackInput(s, d); invoke("write", { sessionId: s.sid, data: d }); });
+  // the local grid follows the window every frame; the server only hears about the final size
+  term.onResize(() => {
+    if (s.state !== "connected") return;
+    clearTimeout(s.resizeT);
+    s.resizeT = setTimeout(() => invoke("resize", { sessionId: s.sid, cols: s.term.cols, rows: s.term.rows }), 120);
+  });
 
   let raf = 0;
   new ResizeObserver(() => {
@@ -387,6 +395,24 @@ function createSession(sid, host) {
   $("#tabs").append(tab);
   s.tab = tab;
   return s;
+}
+
+/* Cursor blink without xterm's infinite CSS animation: that keeps Chromium producing frames at 60 fps
+   even when idle (~3% CPU per idle session). Here a 530 ms timer flips a class on the visible terminal
+   only — 2 style changes per second — and typing keeps the cursor solid, like a real terminal. */
+let blinkOff = false;
+function cursorBlinker() {
+  const s = sessions.get(activeSid);
+  const live = s && prefs.cursorBlink && !s.pane.hidden && document.hasFocus() && !document.hidden &&
+    s.term.element?.classList.contains("focus");
+  blinkOff = live ? !blinkOff : false;
+  for (const x of sessions.values()) x.pane.querySelector(".term").classList.toggle("cur-off", blinkOff && x === s);
+}
+setInterval(cursorBlinker, 530);
+function cursorSolid(s) {
+  if (!blinkOff) return;
+  blinkOff = false;
+  s.pane.querySelector(".term").classList.remove("cur-off");
 }
 
 function activate(sid) {
@@ -941,7 +967,7 @@ const PREF_DEFAULT = {
   // Terminal
   font: "Geist Mono", size: 13.5, lineHeight: 1.2, letterSpacing: 0, weight: "400",
   scheme: "Liquid Glass", cursorStyle: "bar", cursorBlink: true, padding: 14, contrast: false, scrollback: 4000,
-  autocomplete: true, remoteHistory: true,
+  autocomplete: true, remoteHistory: true, smoothScroll: true,
   // Interface
   uiFont: "Geist", uiScale: 100, radius: 18, sideWidth: 268, sidebar: true, density: "comfortable",
   winButtons: "windows", motion: true,
@@ -958,8 +984,9 @@ const termOptions = () => ({
   fontWeight: prefs.weight,
   fontWeightBold: String(Math.min(900, +prefs.weight + 300)),
   cursorStyle: prefs.cursorStyle,
-  cursorBlink: prefs.cursorBlink,
+  cursorBlink: false, // blinking is done by cursorBlinker() below (cheaper than xterm's CSS animation)
   scrollback: prefs.scrollback,
+  smoothScrollDuration: prefs.smoothScroll ? 110 : 0,
   minimumContrastRatio: prefs.contrast ? 4.5 : 1,
 });
 
@@ -1378,6 +1405,7 @@ function tabTerminal() {
     psec("Área do terminal"),
     pgroup(
       ctlSlider("padding", "Margem interna", { min: 0, max: 40, fmt: (v) => v + " px" }),
+      ctlToggle("smoothScroll", "Rolagem suave", "Anima a rolagem com a roda do mouse"),
       ctlSeg("scrollback", "Histórico de linhas", [[1000, "1 mil"], [4000, "4 mil"], [10000, "10 mil"], [25000, "25 mil"]], "Mais histórico = mais memória por aba aberta")),
   ];
 }
@@ -1672,6 +1700,7 @@ function mockInvoke(cmd, args) {
       return Promise.resolve(null);
     }
     case "fetch_history": return Promise.resolve(["sudo dnf upgrade -y", "docker compose pull", "docker compose up -d", "docker ps --format 'table {{.Names}}\t{{.Status}}'", "docker logs -f jellyfin", "systemctl status nginx", "journalctl -u nginx --since \"10 min ago\"", "df -h /srv", "htop", "sudo reboot"]);
+    case "resize": mockInvoke.resizes = (mockInvoke.resizes || 0) + 1; return Promise.resolve(null);
     case "clip_write": mockInvoke.clip = args.text; return Promise.resolve(null);
     case "clip_read": return Promise.resolve(mockInvoke.clip || "");
     default: return Promise.resolve(null);

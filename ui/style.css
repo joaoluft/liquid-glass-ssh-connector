@@ -668,3 +668,8 @@ body.nomotion *, body.nomotion *::before, body.nomotion *::after { animation: no
 .sg-foot { padding: 6px 8px 3px; font-size: 10.5px; color: var(--text-3); border-top: 1px solid var(--hair); margin-top: 3px; }
 .sg-foot kbd { font-size: 9.5px; padding: 0 4px; }
 body.compact .findbar { top: 46px; }
+
+/* cursor "off" phase of the app's own blinker (see cursorBlinker in app.js): the cell looks like plain text */
+.term.cur-off .xterm.focus .xterm-rows .xterm-cursor.xterm-cursor-block { background-color: transparent !important; color: inherit !important; }
+.term.cur-off .xterm.focus .xterm-rows .xterm-cursor.xterm-cursor-bar,
+.term.cur-off .xterm.focus .xterm-rows .xterm-cursor.xterm-cursor-underline { box-shadow: none !important; }

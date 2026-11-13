@@ -9,6 +9,7 @@ use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 use store::{HostEntry, Store};
 use tauri::ipc::Channel;
+use tauri::Manager;
 
 pub static STORE: OnceLock<Store> = OnceLock::new();
 
@@ -231,6 +232,30 @@ fn clip_write(text: String) {
     }
 }
 
+/// While minimized, tell WebView2 it is hidden (stops painting, throttles timers) and ask it to trim
+/// memory; restore both when the window comes back. SSH sessions keep running in the Rust side.
+fn set_background_mode(wv: &tauri::WebviewWindow, hidden: bool) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static HIDDEN: AtomicBool = AtomicBool::new(false);
+    if HIDDEN.swap(hidden, Ordering::SeqCst) == hidden {
+        return; // only act on changes (Resized fires a lot while dragging)
+    }
+    let _ = wv.with_webview(move |pw| unsafe {
+        use webview2_com::Microsoft::Web::WebView2::Win32::{
+            ICoreWebView2_19, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL,
+        };
+        use windows_core::Interface;
+        let ctrl = pw.controller();
+        let _ = ctrl.SetIsVisible(!hidden);
+        if let Ok(core) = ctrl.CoreWebView2() {
+            if let Ok(c19) = core.cast::<ICoreWebView2_19>() {
+                let level = if hidden { COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW } else { COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL };
+                let _ = c19.SetMemoryUsageTargetLevel(level);
+            }
+        }
+    });
+}
+
 fn main() {
     let _ = STORE.set(Store::load());
     tauri::Builder::default()
@@ -253,6 +278,14 @@ fn main() {
             clip_read,
             clip_write
         ])
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::Resized(_) = event {
+                if let Some(wv) = window.app_handle().get_webview_window(window.label()) {
+                    let minimized = wv.is_minimized().unwrap_or(false);
+                    set_background_mode(&wv, minimized);
+                }
+            }
+        })
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o SSH Connector");
 }
