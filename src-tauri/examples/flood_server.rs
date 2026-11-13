@@ -48,6 +48,17 @@ impl server::Handler for Flood {
         Ok(())
     }
 
+    /// `exec` requests (the app reads shell history this way): answer with a fake history.
+    async fn exec_request(&mut self, ch: ChannelId, _cmd: &[u8], s: &mut Session) -> Result<(), Self::Error> {
+        s.channel_success(ch)?;
+        let hist = "ls -la\n#1700000000\nsudo dnf upgrade -y\n: 1700000001:0;docker compose pull\ndocker compose up -d\ndocker logs -f jellyfin\nsystemctl status nginx\n";
+        s.data(ch, CryptoVec::from(hist.to_string()))?;
+        s.exit_status_request(ch, 0)?;
+        s.eof(ch)?;
+        s.close(ch)?;
+        Ok(())
+    }
+
     /// Echo keystrokes back (Enter -> newline), so typing can be verified end to end.
     async fn data(&mut self, ch: ChannelId, data: &[u8], s: &mut Session) -> Result<(), Self::Error> {
         let echo: Vec<u8> = data.iter().flat_map(|&b| if b == b'\r' { vec![b'\r', b'\n'] } else { vec![b] }).collect();

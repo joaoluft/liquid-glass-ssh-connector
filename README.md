@@ -23,6 +23,10 @@ A engrenagem na barra de título (ou `Ctrl+,`) abre o painel de personalização
 - **Servidores:** ícone personalizado para cada máquina
 - **Exportar / Importar** o tema pela área de transferência para levar a outro PC
 
+## Buscar e sugestões
+- **Lupa** (ícone no topo do terminal ou `Ctrl+Shift+F`): busca na saída e no histórico de rolagem, destaca todas as ocorrências, mostra "3 de 12", com maiúsculas/minúsculas, palavra inteira e regex. `Enter`/`Shift+Enter` ou `F3` navegam.
+- **Sugestões de comandos:** enquanto você digita, aparecem comandos do histórico do próprio servidor (bash, zsh ou fish, lido ao conectar) e do que você rodou na sessão. `↑↓` escolhem, `→` aceita, `Esc` fecha; o `Tab` continua sendo o autocomplete do shell. Senhas digitadas (que não aparecem na tela) nunca entram no histórico, nada é gravado em disco e as sugestões somem dentro de vim/htop. Dá para desligar em Personalizar → Terminal.
+
 ## Área de transferência
 O app tem um clipboard próprio (botão na barra de título ou `Ctrl+Shift+V`): tudo que você copia em
 qualquer terminal fica num histórico, e um clique cola o item no terminal ativo, ideal para levar comandos
@@ -36,6 +40,8 @@ de uma máquina para outra. Itens podem ser fixados. O histórico fica só na me
 | Área de transferência | `Ctrl+Shift+V` · teclas `1`–`9` colam um item com o painel aberto |
 | Menu do terminal | clique direito (copiar, colar, selecionar tudo, limpar) |
 | Nova máquina / buscar | `Ctrl+N` / `Ctrl+F` |
+| Buscar no terminal | `Ctrl+Shift+F` · `F3` / `Shift+F3` |
+| Sugestões | `↑↓` escolher · `→` aceitar · `Esc` fechar |
 | Personalizar / barra lateral | `Ctrl+,` / `Ctrl+Shift+B` |
 | Abrir já conectado | `"SSH Connector.exe" --connect "Nome da máquina"` |
 | Aparência (transparência, fonte) | `Ctrl+,` · engrenagem na barra de título |

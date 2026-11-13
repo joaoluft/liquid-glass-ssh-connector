@@ -200,6 +200,12 @@ async fn install_key(session_id: String) -> Result<String, String> {
     ssh::install_key(&session_id).await
 }
 
+/// Server shell history (most recent first) for command suggestions.
+#[tauri::command]
+async fn fetch_history(session_id: String) -> Result<Vec<String>, String> {
+    ssh::fetch_history(&session_id).await
+}
+
 /// Long-poll for terminal output, returned as raw bytes (ArrayBuffer in JS) over the IPC protocol.
 #[tauri::command]
 async fn read(session_id: String) -> Result<tauri::ipc::Response, String> {
@@ -242,6 +248,7 @@ fn main() {
             disconnect,
             install_key,
             read,
+            fetch_history,
             startup_connect,
             clip_read,
             clip_write

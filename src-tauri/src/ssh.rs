@@ -373,3 +373,69 @@ pub async fn install_key(sid: &str) -> Result<String, String> {
     });
     Ok(key_path)
 }
+
+/// Shell history from the server (bash, zsh or fish), most recent first, for command suggestions.
+/// Read through a separate exec channel; nothing is stored on disk by the app.
+pub async fn fetch_history(sid: &str) -> Result<Vec<String>, String> {
+    let handle = {
+        let m = SESSIONS.lock().unwrap();
+        let s = m.get(sid).ok_or("Sessão não encontrada.")?;
+        s.handle.clone().ok_or("Conecte-se primeiro.")?
+    };
+    // fixed command, no user input involved
+    const CMD: &str = "cat ~/.bash_history ~/.zsh_history ~/.local/share/fish/fish_history 2>/dev/null | tail -n 5000";
+    const MAX: usize = 1024 * 1024;
+
+    let run = async {
+        let mut ch = handle.channel_open_session().await.map_err(|e| e.to_string())?;
+        ch.exec(true, CMD).await.map_err(|e| e.to_string())?;
+        let mut out = Vec::new();
+        while let Some(msg) = ch.wait().await {
+            match msg {
+                ChannelMsg::Data { data } => {
+                    out.extend_from_slice(&data);
+                    if out.len() > MAX {
+                        break;
+                    }
+                }
+                ChannelMsg::Eof | ChannelMsg::Close => break,
+                _ => {}
+            }
+        }
+        Ok::<_, String>(out)
+    };
+    let raw = tokio::time::timeout(Duration::from_secs(5), run)
+        .await
+        .map_err(|_| "Tempo esgotado lendo o histórico.".to_string())??;
+
+    let text = String::from_utf8_lossy(&raw);
+    let mut seen = std::collections::HashSet::new();
+    let mut cmds: Vec<String> = Vec::new();
+    for line in text.lines().rev() {
+        let mut c = line.trim();
+        if c.is_empty() || c.starts_with('#') || c.starts_with("when:") {
+            continue; // bash timestamps, fish metadata
+        }
+        // zsh extended history ": 1699999999:0;cmd"
+        if c.starts_with(": ") {
+            if let Some(i) = c.find(';') {
+                c = &c[i + 1..];
+            }
+        }
+        // fish "- cmd: cmd"
+        if let Some(rest) = c.strip_prefix("- cmd: ") {
+            c = rest;
+        }
+        let c = c.trim();
+        if c.len() < 2 || c.len() > 500 {
+            continue;
+        }
+        if seen.insert(c.to_string()) {
+            cmds.push(c.to_string());
+            if cmds.len() >= 2000 {
+                break;
+            }
+        }
+    }
+    Ok(cmds)
+}

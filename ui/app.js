@@ -35,6 +35,8 @@ const I = {
   clear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"><circle cx="12" cy="12" r="8"/></svg>',
   chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',
+  up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>',
+  down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
   image: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>',
   sidebar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg>',
   alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 8v5M12 16.5h.01"/><circle cx="12" cy="12" r="9"/></svg>',
@@ -294,11 +296,25 @@ function createSession(sid, host) {
       <span class="pane-sub">${esc(host.user)}@${esc(host.host)}</span>
       <span class="chip" data-r="chip"><i></i><span></span></span>
       <span class="grow"></span>
+      <button class="pbtn" data-r="find" title="Buscar no terminal (Ctrl+Shift+F)">${I.search}</button>
       <button class="pbtn" data-r="key" title="Gera uma chave e instala no servidor: próximas conexões sem senha">${I.key}Login sem senha</button>
       <button class="pbtn" data-r="re" title="Reconectar">${I.redo}</button>
       <button class="pbtn" data-r="off" title="Desconectar">${I.power}</button>
     </div>
     <div class="term"></div>
+    <div class="findbar glass-strong" hidden>
+      <span class="find-ico">${I.search}</span>
+      <input type="text" placeholder="Buscar no terminal" spellcheck="false" autocomplete="off">
+      <output class="find-count"></output>
+      <button class="find-opt" data-o="caseSensitive" title="Diferenciar maiúsculas">Aa</button>
+      <button class="find-opt" data-o="wholeWord" title="Palavra inteira"><u>ab</u></button>
+      <button class="find-opt" data-o="regex" title="Expressão regular">.*</button>
+      <span class="find-sep"></span>
+      <button class="icon-btn" data-f="prev" title="Anterior (Shift+Enter)">${I.up}</button>
+      <button class="icon-btn" data-f="next" title="Próximo (Enter)">${I.down}</button>
+      <button class="icon-btn" data-f="close" title="Fechar (Esc)">${I.x}</button>
+    </div>
+    <div class="suggest glass-strong" hidden></div>
     <div class="overlay" hidden></div>`);
   $("#stage").append(pane);
 
@@ -308,14 +324,21 @@ function createSession(sid, host) {
     theme: termTheme(),
     macOptionIsMeta: true,
     rightClickSelectsWord: false,
+    allowProposedApi: true, // search highlights (decorations) + result count
   });
   const fit = new FitAddon.FitAddon();
   term.loadAddon(fit);
   term.loadAddon(new WebLinksAddon.WebLinksAddon());
+  const search = new SearchAddon.SearchAddon({ highlightLimit: 2000 });
+  term.loadAddon(search);
   term.open($(".term", pane));
 
-  const s = { sid, hostId: host.id, host, term, fit, pane, state: "idle", tab: null, scheme: schemeOf().name };
+  const s = { sid, hostId: host.id, host, term, fit, search, pane, state: "idle", tab: null, scheme: schemeOf().name,
+              find: { caseSensitive: false, wholeWord: false, regex: false },
+              ac: { line: "", clean: true, hist: [], items: [], sel: 0, dismissed: null } };
   sessions.set(sid, s);
+  setupFind(s);
+  setupSuggest(s);
 
   // keyboard, Windows Terminal style:
   //   Ctrl+C copies when there is a selection (otherwise it's SIGINT), Ctrl+Shift+C / Ctrl+Insert copy,
@@ -324,6 +347,9 @@ function createSession(sid, host) {
     if (e.type !== "keydown") return true;
     const k = e.key.toLowerCase();
     const stop = () => { e.preventDefault(); return false; };
+    if (suggestKey(s, e)) return stop();
+    if (e.ctrlKey && e.shiftKey && k === "f") { openFind(s); return stop(); }
+    if (e.key === "F3" && !$(".findbar", s.pane).hidden) { runFind(s, !e.shiftKey); return stop(); }
     if (e.ctrlKey && e.shiftKey && k === "v") { toggleClip(); return stop(); }
     if (e.ctrlKey && k === ",") { togglePrefs(); return stop(); }
     if (e.ctrlKey && k === "c" && (e.shiftKey || term.hasSelection())) { copySel(s); return stop(); }
@@ -341,7 +367,7 @@ function createSession(sid, host) {
     openTermMenu(s, e.clientX, e.clientY);
   });
 
-  term.onData((d) => { if (s.state === "connected") invoke("write", { sessionId: s.sid, data: d }); });
+  term.onData((d) => { if (s.state !== "connected") return; trackInput(s, d); invoke("write", { sessionId: s.sid, data: d }); });
   term.onResize(({ cols, rows }) => { if (s.state === "connected") invoke("resize", { sessionId: s.sid, cols, rows }); });
 
   let raf = 0;
@@ -458,6 +484,7 @@ function startConnect(s, secret = null, remember = false) {
         setState(s, ev.state, ev.message);
         if (ev.state === "connected") {
           if (T) pumpOutput(s, sid);
+          loadRemoteHistory(s);
           s.term.focus();
           invoke("resize", { sessionId: s.sid, cols: s.term.cols, rows: s.term.rows });
           loadHosts();
@@ -543,6 +570,200 @@ async function installKey(s) {
     btn.disabled = false;
     btn.style.opacity = "";
   }
+}
+
+/* ---------- find in terminal (Ctrl+Shift+F / magnifier) ---------- */
+const toHex = (c) => "#" + c.map((x) => x.toString(16).padStart(2, "0")).join("");
+function findDecorations() {
+  const a = rgb(/^#[0-9a-f]{6}$/i.test(prefs.accent) ? prefs.accent : PREF_DEFAULT.accent);
+  return {
+    matchBackground: toHex(mix(a, [0, 0, 0], 0.55)),
+    matchOverviewRuler: toHex(a),
+    activeMatchBackground: toHex(a),
+    activeMatchColorOverviewRuler: "#ffffff",
+  };
+}
+
+function setupFind(s) {
+  const fb = $(".findbar", s.pane), inp = $("input", fb), count = $(".find-count", fb);
+  s.search.onDidChangeResults(({ resultIndex, resultCount }) => {
+    count.textContent = !inp.value ? "" : resultCount === 0 ? "nada" : resultIndex < 0 ? `${resultCount}` : `${resultIndex + 1} de ${resultCount}`;
+    fb.classList.toggle("nf", !!inp.value && resultCount === 0);
+  });
+  inp.oninput = () => runFind(s, true, true);
+  inp.onkeydown = (e) => {
+    if (e.key === "Enter") { e.preventDefault(); runFind(s, !e.shiftKey); }
+    else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeFind(s); }
+    else if (e.key === "F3") { e.preventDefault(); runFind(s, !e.shiftKey); }
+  };
+  fb.querySelectorAll(".find-opt").forEach((b) => (b.onclick = () => {
+    s.find[b.dataset.o] = !s.find[b.dataset.o];
+    b.classList.toggle("on", s.find[b.dataset.o]);
+    runFind(s, true, true);
+    inp.focus();
+  }));
+  fb.querySelector('[data-f="prev"]').onclick = () => { runFind(s, false); inp.focus(); };
+  fb.querySelector('[data-f="next"]').onclick = () => { runFind(s, true); inp.focus(); };
+  fb.querySelector('[data-f="close"]').onclick = () => closeFind(s);
+  $('[data-r="find"]', s.pane).onclick = () => openFind(s);
+}
+
+function openFind(s) {
+  const fb = $(".findbar", s.pane), inp = $("input", fb);
+  hideSuggest(s);
+  fb.hidden = false;
+  const sel = s.term.getSelection();
+  if (sel && !sel.includes("\n") && sel.length < 200) inp.value = sel.trim();
+  inp.focus();
+  inp.select();
+  if (inp.value) runFind(s, true, true);
+}
+
+function closeFind(s) {
+  const fb = $(".findbar", s.pane);
+  if (fb.hidden) return;
+  fb.hidden = true;
+  s.search.clearDecorations();
+  s.term.clearSelection();
+  s.term.focus();
+}
+
+function runFind(s, forward = true, incremental = false) {
+  const fb = $(".findbar", s.pane), q = $("input", fb).value;
+  if (!q) { s.search.clearDecorations(); $(".find-count", fb).textContent = ""; fb.classList.remove("nf"); return; }
+  if (s.find.regex) { try { new RegExp(q); } catch { $(".find-count", fb).textContent = "regex inválida"; fb.classList.add("nf"); return; } }
+  const opts = { ...s.find, incremental: incremental && forward, decorations: findDecorations() };
+  forward ? s.search.findNext(q, opts) : s.search.findPrevious(q, opts);
+}
+
+/* ---------- command suggestions (autocomplete) ----------
+   Tracks what you type on the current shell line and suggests matching commands from the server's shell
+   history (fetched on connect) plus what you ran in this session. ↑↓ choose, → accepts, Esc hides.
+   Tab is left alone (it's the shell's own completion). Everything stays in memory only. */
+const AC_MAX = 6;
+
+function setupSuggest(s) {
+  const box = $(".suggest", s.pane);
+  box.addEventListener("mousedown", (e) => {
+    const i = e.target.closest("[data-i]")?.dataset.i;
+    if (i == null) return;
+    e.preventDefault();
+    acceptSuggest(s, +i);
+    s.term.focus();
+  });
+  s.term.onScroll(() => hideSuggest(s));
+}
+
+/** Called with every chunk the user types (before it is sent). Keeps s.ac.line in sync when it can. */
+function trackInput(s, d) {
+  const ac = s.ac;
+  if (d === "\r") {
+    commitLine(s);
+    ac.line = ""; ac.clean = true; ac.dismissed = null;
+  } else if (d === "\x7f" || d === "\b") {
+    ac.line = ac.line.slice(0, -1);
+  } else if (d === "\x03" || d === "\x15") { // Ctrl+C, Ctrl+U: fresh line
+    ac.line = ""; ac.clean = true; ac.dismissed = null;
+  } else if (/^[^\x00-\x1f\x7f]+$/.test(d)) { // plain text (typing or a single-line paste)
+    ac.line += d;
+  } else {
+    // Tab completion, arrows, Ctrl+A/W/R…, multi-line pastes: we no longer know the line
+    ac.clean = false;
+  }
+  updateSuggest(s);
+}
+
+/** Remember a command once Enter is pressed, but only if it was echoed on screen (passwords aren't). */
+function commitLine(s) {
+  const cmd = s.ac.line.trim();
+  if (!s.ac.clean || cmd.length < 2 || s.term.buffer.active.type !== "normal") return;
+  const b = s.term.buffer.active, y = b.baseY + b.cursorY;
+  let screen = "";
+  for (let i = Math.max(0, y - 3); i <= y; i++) screen += b.getLine(i)?.translateToString(true) || "";
+  if (!screen.includes(cmd.slice(0, Math.min(cmd.length, 6)))) return; // not echoed → probably a password
+  s.ac.hist = [cmd, ...s.ac.hist.filter((x) => x !== cmd)].slice(0, 3000);
+}
+
+function updateSuggest(s) {
+  const ac = s.ac;
+  const q = ac.line;
+  const ok = prefs.autocomplete && s.state === "connected" && ac.clean && q.trim().length >= 2 &&
+    q !== ac.dismissed && s.term.buffer.active.type === "normal" && $(".findbar", s.pane).hidden;
+  if (!ok) return hideSuggest(s);
+  const starts = [], contains = [];
+  for (const c of ac.hist) {
+    if (c === q) continue;
+    if (c.startsWith(q)) starts.push(c);
+    else if (q.length >= 3 && c.includes(q)) contains.push(c);
+    if (starts.length >= AC_MAX) break;
+  }
+  ac.items = [...starts, ...contains].slice(0, AC_MAX);
+  if (!ac.items.length) return hideSuggest(s);
+  ac.sel = Math.min(ac.sel, ac.items.length - 1);
+  renderSuggest(s);
+}
+
+function renderSuggest(s) {
+  const ac = s.ac, box = $(".suggest", s.pane);
+  box.innerHTML = ac.items.map((c, i) => {
+    const at = c.indexOf(ac.line);
+    const hl = at < 0 ? esc(c) : esc(c.slice(0, at)) + `<b>${esc(ac.line)}</b>` + esc(c.slice(at + ac.line.length));
+    return `<div class="sg-item${i === ac.sel ? " on" : ""}" data-i="${i}"><span class="sg-text">${hl}</span>${i === ac.sel ? `<kbd>→</kbd>` : ""}</div>`;
+  }).join("") + `<div class="sg-foot"><kbd>↑</kbd><kbd>↓</kbd> escolher · <kbd>→</kbd> aceitar · <kbd>Esc</kbd> fechar</div>`;
+  box.hidden = false;
+
+  // place it under the start of the typed text, or above the line when there's no room below
+  const scr = $(".xterm-screen", s.pane).getBoundingClientRect(), pr = s.pane.getBoundingClientRect();
+  const cw = scr.width / s.term.cols, ch = scr.height / s.term.rows;
+  const b = s.term.buffer.active;
+  const col = Math.max(0, b.cursorX - ac.line.length);
+  let x = scr.left - pr.left + col * cw - 8;
+  let y = scr.top - pr.top + (b.cursorY + 1) * ch + 4;
+  const bw = box.offsetWidth, bh = box.offsetHeight;
+  x = Math.max(8, Math.min(x, pr.width - bw - 8));
+  if (y + bh > pr.height - 8) y = scr.top - pr.top + b.cursorY * ch - bh - 4;
+  box.style.left = x + "px";
+  box.style.top = Math.max(48, y) + "px";
+}
+
+function hideSuggest(s) {
+  const box = $(".suggest", s.pane);
+  if (box && !box.hidden) box.hidden = true;
+  s.ac.items = [];
+  s.ac.sel = 0;
+}
+
+function acceptSuggest(s, i = s.ac.sel) {
+  const ac = s.ac, c = ac.items[i];
+  if (!c) return;
+  // extend the typed text when it's a prefix; otherwise erase it and type the whole command
+  const data = c.startsWith(ac.line) ? c.slice(ac.line.length) : "\x7f".repeat(ac.line.length) + c;
+  ac.line = c;
+  ac.dismissed = c;
+  hideSuggest(s);
+  if (data) invoke("write", { sessionId: s.sid, data });
+}
+
+/** Keys the popup owns while it's open; returns true when handled (not sent to the server). */
+function suggestKey(s, e) {
+  const ac = s.ac;
+  if ($(".suggest", s.pane).hidden || !ac.items.length) return false;
+  if (e.key === "ArrowDown") { ac.sel = (ac.sel + 1) % ac.items.length; renderSuggest(s); return true; }
+  if (e.key === "ArrowUp") { ac.sel = (ac.sel - 1 + ac.items.length) % ac.items.length; renderSuggest(s); return true; }
+  if (e.key === "ArrowRight") { acceptSuggest(s); return true; }
+  if (e.key === "Escape") { ac.dismissed = ac.line; hideSuggest(s); return true; }
+  return false;
+}
+
+/** Load the server's shell history (bash/zsh/fish) into the suggestions, most recent first. */
+async function loadRemoteHistory(s) {
+  if (!prefs.autocomplete || !prefs.remoteHistory) return;
+  try {
+    const remote = await invoke("fetch_history", { sessionId: s.sid });
+    if (!Array.isArray(remote)) return;
+    const seen = new Set(s.ac.hist);
+    s.ac.hist = [...s.ac.hist, ...remote.filter((c) => !seen.has(c) && seen.add(c))];
+  } catch { /* no history file / shell without one: suggestions still learn from this session */ }
 }
 
 /* ---------- in-app clipboard ----------
@@ -720,6 +941,7 @@ const PREF_DEFAULT = {
   // Terminal
   font: "Geist Mono", size: 13.5, lineHeight: 1.2, letterSpacing: 0, weight: "400",
   scheme: "Liquid Glass", cursorStyle: "bar", cursorBlink: true, padding: 14, contrast: false, scrollback: 4000,
+  autocomplete: true, remoteHistory: true,
   // Interface
   uiFont: "Geist", uiScale: 100, radius: 18, sideWidth: 268, sidebar: true, density: "comfortable",
   winButtons: "windows", motion: true,
@@ -840,6 +1062,7 @@ function applyPrefs(save = true) {
     const o = termOptions();
     for (const k in o) if (s.term.options[k] !== o[k]) s.term.options[k] = o[k];
     if (!s.pane.hidden) try { s.fit.fit(); } catch {}
+    if (!prefs.autocomplete) hideSuggest(s);
   }
   if (save) {
     try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); }
@@ -1148,6 +1371,10 @@ function tabTerminal() {
     pgroup(
       ctlSeg("cursorStyle", "Formato", [["bar", "Barra"], ["block", "Bloco"], ["underline", "Sublinhado"]]),
       ctlToggle("cursorBlink", "Cursor piscando")),
+    psec("Sugestões de comandos"),
+    pgroup(
+      ctlToggle("autocomplete", "Sugerir enquanto digito", "↑↓ escolhe, → aceita, Esc fecha. O Tab continua sendo o autocomplete do shell"),
+      prefs.autocomplete ? ctlToggle("remoteHistory", "Usar o histórico do servidor", "Lê ~/.bash_history, ~/.zsh_history ou o do fish ao conectar. Fica só na memória") : null),
     psec("Área do terminal"),
     pgroup(
       ctlSlider("padding", "Margem interna", { min: 0, max: 40, fmt: (v) => v + " px" }),
@@ -1304,6 +1531,7 @@ function openTermMenu(s, x, y) {
     { label: "Copiar", key: "Ctrl+C", icon: I.copy, off: !sel, run: () => copySel(s) },
     { label: "Colar", key: "Ctrl+V", icon: I.paste, off: !live, run: () => paste(s) },
     "-",
+    { label: "Buscar", key: "Ctrl+Shift+F", icon: I.search, run: () => openFind(s) },
     { label: "Área de transferência", key: "Ctrl+Shift+V", icon: I.clip, run: () => toggleClip(true) },
     { label: "Selecionar tudo", key: "Ctrl+Shift+A", icon: I.selectAll, run: () => s.term.selectAll() },
     { label: "Limpar tela", icon: I.eraser, run: () => s.term.clear() },
@@ -1313,7 +1541,7 @@ function openTermMenu(s, x, y) {
     if (it === "-") { m.append(h("div", { class: "ctx-sep" })); continue; }
     const b = h("button", { class: "ctx-item" }, `${it.icon}<span>${it.label}</span>${it.key ? `<kbd>${it.key}</kbd>` : ""}`);
     if (it.off) b.disabled = true;
-    b.onclick = () => { closeMenu(); it.run(); if (!it.label.startsWith("Área")) s.term.focus(); };
+    b.onclick = () => { closeMenu(); it.run(); if (!["Área de transferência", "Buscar"].includes(it.label)) s.term.focus(); };
     m.append(b);
   }
   document.body.append(m);
@@ -1437,7 +1665,13 @@ function mockInvoke(cmd, args) {
     case "probe": return Promise.resolve(ping[args.host] ?? null);
     case "save_host": { const x = { ...args.input, id: args.input.id || String(Date.now()), hasSecret: false, icon: db.find((d) => d.id === args.input.id)?.icon || "" }; const i = db.findIndex((d) => d.id === x.id); i >= 0 ? (db[i] = x) : db.push(x); return Promise.resolve(x); }
     case "set_host_icon": { const x = db.find((d) => d.id === args.id); if (x) x.icon = args.icon; return Promise.resolve(); }
-    case "connect": setTimeout(() => { args.onEvent.onmessage({ type: "status", state: "connected", message: "" }); args.onEvent.onmessage({ type: "data", data: demo }); }, 400); return Promise.resolve();
+    case "connect": mockInvoke.ch = args.onEvent; setTimeout(() => { args.onEvent.onmessage({ type: "status", state: "connected", message: "" }); args.onEvent.onmessage({ type: "data", data: demo }); }, 400); return Promise.resolve();
+    case "write": {
+      const ch = mockInvoke.ch;
+      if (ch) ch.onmessage({ type: "data", data: args.data.replace(/\r/g, "\r\n" + P).replace(/\x7f/g, "\b \b") });
+      return Promise.resolve(null);
+    }
+    case "fetch_history": return Promise.resolve(["sudo dnf upgrade -y", "docker compose pull", "docker compose up -d", "docker ps --format 'table {{.Names}}\t{{.Status}}'", "docker logs -f jellyfin", "systemctl status nginx", "journalctl -u nginx --since \"10 min ago\"", "df -h /srv", "htop", "sudo reboot"]);
     case "clip_write": mockInvoke.clip = args.text; return Promise.resolve(null);
     case "clip_read": return Promise.resolve(mockInvoke.clip || "");
     default: return Promise.resolve(null);
