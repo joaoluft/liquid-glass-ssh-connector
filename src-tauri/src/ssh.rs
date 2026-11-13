@@ -10,13 +10,64 @@ use std::time::Duration;
 use tauri::ipc::Channel;
 use tokio::sync::{mpsc, oneshot};
 
+/// Low-rate control events (JSON over a Tauri Channel). Terminal output does NOT go through here:
+/// every Channel message is a script evaluation in the webview, and pushing output that way made
+/// long heavy sessions pile up CPU and memory. Output is pulled instead, see [`OutBuf`] / [`read`].
 #[derive(Clone, Serialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum Ev {
     Status { state: &'static str, message: String },
-    Data { data: String },
     NeedSecret { kind: &'static str, reason: String },
     HostKey { host: String, fingerprint: String, changed: bool },
+}
+
+/// Raw terminal output waiting for the webview. The UI long-polls [`read`], which returns everything
+/// accumulated so far as raw bytes over the IPC protocol (no script eval). If the UI falls behind and
+/// the buffer reaches [`MAX_BUFFERED`], the session stops reading the SSH channel, so SSH flow control
+/// pushes back on the server instead of memory growing without bound.
+#[derive(Default)]
+pub struct OutBuf {
+    buf: Mutex<Vec<u8>>,
+    ready: tokio::sync::Notify,
+    drained: tokio::sync::Notify,
+    closed: std::sync::atomic::AtomicBool,
+}
+
+const MAX_BUFFERED: usize = 4 * 1024 * 1024;
+
+impl OutBuf {
+    fn push(&self, data: &[u8]) {
+        self.buf.lock().unwrap().extend_from_slice(data);
+        self.ready.notify_one();
+    }
+    fn len(&self) -> usize {
+        self.buf.lock().unwrap().len()
+    }
+    fn close(&self) {
+        self.closed.store(true, std::sync::atomic::Ordering::SeqCst);
+        self.ready.notify_one();
+    }
+}
+
+/// Long-poll for output: resolves as soon as there is data (or after a timeout with an empty body).
+/// Errors once the session is gone and everything has been delivered.
+pub async fn read(sid: &str) -> Result<Vec<u8>, String> {
+    let out = SESSIONS.lock().unwrap().get(sid).map(|s| s.out.clone()).ok_or("closed")?;
+    loop {
+        let taken = std::mem::take(&mut *out.buf.lock().unwrap());
+        if !taken.is_empty() {
+            out.drained.notify_one();
+            return Ok(taken);
+        }
+        if out.closed.load(std::sync::atomic::Ordering::SeqCst) {
+            return Err("closed".into());
+        }
+        // notify_one() stores a permit when nobody waits, so data arriving between the take()
+        // above and this await is never missed.
+        if tokio::time::timeout(Duration::from_secs(15), out.ready.notified()).await.is_err() {
+            return Ok(Vec::new());
+        }
+    }
 }
 
 pub enum Cmd {
@@ -32,6 +83,7 @@ pub struct Sess {
     pub hk: HkSlot,
     pub handle: Option<Arc<Handle<Client>>>,
     pub host_id: String,
+    pub out: Arc<OutBuf>,
 }
 
 pub static SESSIONS: std::sync::LazyLock<Mutex<HashMap<String, Sess>>> =
@@ -80,35 +132,6 @@ fn expand(p: &str) -> String {
     p.to_string()
 }
 
-/// Incremental UTF-8 decoding: keeps a partial multi-byte sequence for the next chunk.
-fn decode(pending: &mut Vec<u8>, chunk: &[u8]) -> String {
-    pending.extend_from_slice(chunk);
-    let mut out = String::new();
-    loop {
-        match std::str::from_utf8(pending) {
-            Ok(s) => {
-                out.push_str(s);
-                pending.clear();
-                break;
-            }
-            Err(e) => {
-                let good = e.valid_up_to();
-                out.push_str(unsafe { std::str::from_utf8_unchecked(&pending[..good]) });
-                match e.error_len() {
-                    Some(n) => {
-                        out.push('\u{FFFD}');
-                        pending.drain(..good + n);
-                    }
-                    None => {
-                        pending.drain(..good);
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    out
-}
 
 fn friendly(e: &russh::Error) -> String {
     match e {
@@ -161,7 +184,8 @@ pub async fn run(sid: String, host: HostEntry, secret_override: Option<String>, 
 
     let (tx, mut rx) = mpsc::unbounded_channel::<Cmd>();
     let hk: HkSlot = Arc::new(Mutex::new(None));
-    SESSIONS.lock().unwrap().insert(sid.clone(), Sess { tx, hk: hk.clone(), handle: None, host_id: host.id.clone() });
+    let out = Arc::new(OutBuf::default());
+    SESSIONS.lock().unwrap().insert(sid.clone(), Sess { tx, hk: hk.clone(), handle: None, host_id: host.id.clone(), out: out.clone() });
 
     let cfg = Arc::new(client::Config {
         keepalive_interval: Some(Duration::from_secs(30)),
@@ -215,25 +239,32 @@ pub async fn run(sid: String, host: HostEntry, secret_override: Option<String>, 
 
     status(&ev, "connected", format!("{}@{}", host.user, host.host));
 
-    let mut pending = Vec::new();
     let reason = loop {
+        // Backpressure: while the UI hasn't picked up MAX_BUFFERED bytes, stop reading the SSH channel.
+        let full = out.len() >= MAX_BUFFERED;
         tokio::select! {
             cmd = rx.recv() => match cmd {
                 Some(Cmd::Data(b)) => { if let Err(e) = channel.data(&b[..]).await { break friendly(&e); } }
                 Some(Cmd::Resize(c, r)) => { let _ = channel.window_change(c.max(20), r.max(5), 0, 0).await; }
                 Some(Cmd::Close) | None => { let _ = channel.close().await; break "Desconectado.".to_string(); }
             },
-            msg = channel.wait() => match msg {
-                Some(ChannelMsg::Data { data }) | Some(ChannelMsg::ExtendedData { data, .. }) => {
-                    let s = decode(&mut pending, &data);
-                    if !s.is_empty() { let _ = ev.send(Ev::Data { data: s }); }
-                }
+            msg = channel.wait(), if !full => match msg {
+                Some(ChannelMsg::Data { data }) | Some(ChannelMsg::ExtendedData { data, .. }) => out.push(&data),
                 Some(ChannelMsg::Eof) | Some(ChannelMsg::Close) | None => break "Sessão encerrada.".to_string(),
                 _ => {}
-            }
+            },
+            _ = out.drained.notified(), if full => {}
         }
     };
 
+    // let the UI pick up the last output before the session disappears
+    out.close();
+    for _ in 0..50 {
+        if out.len() == 0 {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
     SESSIONS.lock().unwrap().remove(&sid);
     let _ = h.disconnect(russh::Disconnect::ByApplication, "", "pt-BR").await;
     status(&ev, "closed", reason);

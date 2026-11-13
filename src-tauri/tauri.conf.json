@@ -21,7 +21,7 @@
         "transparent": true,
         "dragDropEnabled": false,
         "center": true,
-        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,Translate,AutofillServerCommunication,SpareRendererForSitePerProcess --disable-background-networking --renderer-process-limit=1 --in-process-gpu --disable-gpu-shader-disk-cache --force-gpu-mem-available-mb=96"
+        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,Translate,AutofillServerCommunication,SpareRendererForSitePerProcess --disable-background-networking --renderer-process-limit=1 --disable-gpu-shader-disk-cache"
       }
     ],
     "security": {

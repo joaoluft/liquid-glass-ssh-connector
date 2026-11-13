@@ -162,14 +162,15 @@ fn connect(session_id: String, host_id: String, secret: Option<String>, remember
 }
 
 #[tauri::command]
-fn write(session_id: String, data: String) {
+// async = runs on the worker pool, not the window's main thread (keystrokes never wait behind rendering)
+async fn write(session_id: String, data: String) {
     if let Some(s) = SESSIONS.lock().unwrap().get(&session_id) {
         let _ = s.tx.send(Cmd::Data(data.into_bytes()));
     }
 }
 
 #[tauri::command]
-fn resize(session_id: String, cols: u32, rows: u32) {
+async fn resize(session_id: String, cols: u32, rows: u32) {
     if let Some(s) = SESSIONS.lock().unwrap().get(&session_id) {
         let _ = s.tx.send(Cmd::Resize(cols, rows));
     }
@@ -197,6 +198,19 @@ fn disconnect(session_id: String) {
 #[tauri::command]
 async fn install_key(session_id: String) -> Result<String, String> {
     ssh::install_key(&session_id).await
+}
+
+/// Long-poll for terminal output, returned as raw bytes (ArrayBuffer in JS) over the IPC protocol.
+#[tauri::command]
+async fn read(session_id: String) -> Result<tauri::ipc::Response, String> {
+    ssh::read(&session_id).await.map(tauri::ipc::Response::new)
+}
+
+/// `SSH Connector.exe --connect <name|id>` opens that machine on startup (handy for desktop shortcuts).
+#[tauri::command]
+fn startup_connect() -> Option<String> {
+    let args: Vec<String> = std::env::args().collect();
+    args.iter().position(|a| a == "--connect").and_then(|i| args.get(i + 1).cloned())
 }
 
 #[tauri::command]
@@ -227,6 +241,8 @@ fn main() {
             answer_host_key,
             disconnect,
             install_key,
+            read,
+            startup_connect,
             clip_read,
             clip_write
         ])

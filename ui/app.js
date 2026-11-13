@@ -454,10 +454,11 @@ function startConnect(s, secret = null, remember = false) {
   const ch = makeChannel((ev) => {
     if (s.sid !== sid) return; // stale channel from a previous attempt
     switch (ev.type) {
-      case "data": s.term.write(ev.data); break;
+      case "data": s.term.write(ev.data); break; // browser preview mock only
       case "status":
         setState(s, ev.state, ev.message);
         if (ev.state === "connected") {
+          if (T) pumpOutput(s, sid);
           s.term.focus();
           invoke("resize", { sessionId: s.sid, cols: s.term.cols, rows: s.term.rows });
           loadHosts();
@@ -469,6 +470,18 @@ function startConnect(s, secret = null, remember = false) {
   });
   invoke("connect", { sessionId: sid, hostId: s.hostId, secret, remember, cols: s.term.cols, rows: s.term.rows, onEvent: ch })
     .catch((e) => setState(s, "error", String(e)));
+}
+
+/** Pull terminal output from the backend: one long-poll in flight, raw bytes (xterm decodes UTF-8),
+ *  and the next read waits until xterm has processed the previous chunk — end-to-end backpressure,
+ *  so a chatty server can never build an unbounded queue in the UI. */
+async function pumpOutput(s, sid) {
+  while (s.sid === sid) {
+    let buf;
+    try { buf = await invoke("read", { sessionId: sid }); } catch { return; } // session ended
+    if (s.sid !== sid) return;
+    if (buf && buf.byteLength) await new Promise((done) => s.term.write(new Uint8Array(buf), done));
+  }
 }
 
 function askSecret(s, kind, reason) {
@@ -985,8 +998,16 @@ Promise.all([document.fonts.load('13px "Geist"'), document.fonts.load('13px "Gei
   .catch(() => {})
   .finally(async () => {
     await loadHosts();
+    // "SSH Connector.exe --connect <name|id>"
+    if (T) {
+      const want = await invoke("startup_connect").catch(() => null);
+      const target = want && hosts.find((x) => x.id === want || x.name.toLowerCase() === want.toLowerCase());
+      if (target) openSessionFor(target);
+      else if (want) toast(`Máquina “${want}” não encontrada`);
+    }
     // browser preview only: index.html#demo opens a sample session (used for README screenshots)
     if (!T && location.hash.startsWith("#demo") && hosts[0]) openSessionFor(hosts[0]);
+    if (!T && location.hash === "#flood") startFlood();
     if (!T && location.hash === "#demo-clip") {
       addClip("docker compose up -d", "Fedora Server", "#5ac8fa");
       addClip("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHk3x… admin@fedora", "Fedora Server", "#5ac8fa");
@@ -996,6 +1017,32 @@ Promise.all([document.fonts.load('13px "Geist"'), document.fonts.load('13px "Gei
       toggleClip(true);
     }
   });
+
+/* ---------- browser preview stress test: index.html#flood ----------
+   Simulates a heavy TUI (agent / htop style full redraws at ~30 fps plus a scrolling log)
+   and reports fps + main-thread long tasks in document.title, for before/after benchmarks. */
+function startFlood() {
+  // no rAF counter here on purpose: it would force continuous frames and skew the CPU numbers
+  let longMs = 0, tick = 0;
+  try { new PerformanceObserver((l) => l.getEntries().forEach((e) => (longMs += e.duration))).observe({ entryTypes: ["longtask"] }); } catch {}
+  setInterval(() => { document.title = `fps=0 long=${Math.round(longMs)}`; longMs = 0; }, 1000);
+  const spin = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";
+  openSessionFor(hosts[0]);
+  setTimeout(() => {
+    const s = [...sessions.values()][0];
+    setInterval(() => {
+      tick++;
+      let out = "\x1b[H";
+      for (let r = 0; r < 28; r++) {
+        const pct = (tick * 3 + r * 7) % 100;
+        out += `\x1b[2K\x1b[38;5;${(r * 7 + tick) % 230 + 17}m${spin[(tick + r) % 10]} worker-${String(r).padStart(2, "0")} \x1b[0m` +
+          `[\x1b[32m${"█".repeat(pct / 4 | 0)}\x1b[90m${"░".repeat(25 - (pct / 4 | 0))}\x1b[0m] ${String(pct).padStart(3)}%  ` +
+          `\x1b[2mreq=${(tick * 13 + r * 101) % 99999} lat=${(tick + r) % 250}ms\x1b[0m\r\n`;
+      }
+      s.term.write(out);
+    }, 33);
+  }, 800);
+}
 
 /* ---------- browser preview mock (fictional data; only used outside Tauri) ---------- */
 
