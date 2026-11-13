@@ -153,12 +153,12 @@ async fn probe(host: String, port: u16) -> Option<u32> {
 }
 
 #[tauri::command]
-fn connect(session_id: String, host_id: String, secret: Option<String>, remember: bool, cols: u32, rows: u32, on_event: Channel<Ev>) -> Result<(), String> {
+fn connect(session_id: String, host_id: String, secret: Option<String>, remember: bool, cols: u32, rows: u32, prompt: Option<std::collections::HashMap<String, String>>, on_event: Channel<Ev>) -> Result<(), String> {
     let host = store().find(&host_id).ok_or("Máquina não encontrada.")?;
     if host.user.is_empty() {
         return Err("Defina o usuário desta máquina.".into());
     }
-    tauri::async_runtime::spawn(ssh::run(session_id, host, secret, remember, cols, rows, on_event));
+    tauri::async_runtime::spawn(ssh::run(session_id, host, secret, remember, cols, rows, prompt, on_event));
     Ok(())
 }
 

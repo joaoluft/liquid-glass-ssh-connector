@@ -37,6 +37,7 @@ const I = {
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',
   up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>',
   down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+  folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2.5h7.5A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>',
   image: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>',
   sidebar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg>',
   alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 8v5M12 16.5h.01"/><circle cx="12" cy="12" r="9"/></svg>',
@@ -298,6 +299,8 @@ function createSession(sid, host) {
       <div><div class="pane-title">${esc(host.name)}</div></div>
       <span class="pane-sub">${esc(host.user)}@${esc(host.host)}</span>
       <span class="chip" data-r="chip"><i></i><span></span></span>
+      <button class="crumb" data-r="crumb" hidden>${I.folder}<span></span></button>
+      <span class="gitchip" data-r="git" hidden></span>
       <span class="grow"></span>
       <button class="pbtn" data-r="find" title="Buscar no terminal (Ctrl+Shift+F)">${I.search}</button>
       <button class="pbtn" data-r="key" title="Gera uma chave e instala no servidor: próximas conexões sem senha">${I.key}Login sem senha</button>
@@ -335,13 +338,26 @@ function createSession(sid, host) {
   const search = new SearchAddon.SearchAddon({ highlightLimit: 2000 });
   term.loadAddon(search);
   term.open($(".term", pane));
+  const s0 = { webgl: false };
+  if (prefs.renderer === "webgl") {
+    // GPU renderer: also draws powerline/box glyphs itself (prompt flags look perfect without special fonts)
+    try {
+      const gl = new WebglAddon.WebglAddon();
+      gl.onContextLoss(() => { gl.dispose(); s0.webgl = false; term.options.cursorBlink = false; });
+      term.loadAddon(gl);
+      s0.webgl = true;
+      term.options.cursorBlink = prefs.cursorBlink; // WebGL blinks by redrawing only the cursor: cheap
+    } catch (e) { console.warn("WebGL indisponível, usando o renderizador DOM", e); }
+  }
 
-  const s = { sid, hostId: host.id, host, term, fit, search, pane, state: "idle", tab: null, scheme: schemeOf().name,
+  const s = { sid, hostId: host.id, host, term, fit, search, pane, get webgl() { return s0.webgl; }, state: "idle", tab: null, scheme: schemeOf().name,
               find: { caseSensitive: false, wholeWord: false, regex: false },
               ac: { line: "", clean: true, hist: [], items: [], sel: 0, dismissed: null } };
   sessions.set(sid, s);
   setupFind(s);
   setupSuggest(s);
+  setupShellIntegration(s);
+  $('[data-r="crumb"]', pane).onclick = () => { if (s.cwdAbs || s.cwd) copyText(s.cwdAbs || s.cwd, s.host.name, s.host.color).then(() => toast("Caminho copiado")); };
 
   // keyboard, Windows Terminal style:
   //   Ctrl+C copies when there is a selection (otherwise it's SIGINT), Ctrl+Shift+C / Ctrl+Insert copy,
@@ -403,7 +419,7 @@ function createSession(sid, host) {
 let blinkOff = false;
 function cursorBlinker() {
   const s = sessions.get(activeSid);
-  const live = s && prefs.cursorBlink && !s.pane.hidden && document.hasFocus() && !document.hidden &&
+  const live = s && !s.webgl && prefs.cursorBlink && !s.pane.hidden && document.hasFocus() && !document.hidden &&
     s.term.element?.classList.contains("focus");
   blinkOff = live ? !blinkOff : false;
   for (const x of sessions.values()) x.pane.querySelector(".term").classList.toggle("cur-off", blinkOff && x === s);
@@ -520,7 +536,7 @@ function startConnect(s, secret = null, remember = false) {
       case "hostKey": askHostKey(s, ev); break;
     }
   });
-  invoke("connect", { sessionId: sid, hostId: s.hostId, secret, remember, cols: s.term.cols, rows: s.term.rows, onEvent: ch })
+  invoke("connect", { sessionId: sid, hostId: s.hostId, secret, remember, cols: s.term.cols, rows: s.term.rows, prompt: promptConfig(), onEvent: ch })
     .catch((e) => setState(s, "error", String(e)));
 }
 
@@ -967,7 +983,11 @@ const PREF_DEFAULT = {
   // Terminal
   font: "Geist Mono", size: 13.5, lineHeight: 1.2, letterSpacing: 0, weight: "400",
   scheme: "Liquid Glass", cursorStyle: "bar", cursorBlink: true, padding: 14, contrast: false, scrollback: 4000,
-  autocomplete: true, remoteHistory: true, smoothScroll: true,
+  autocomplete: true, remoteHistory: true, smoothScroll: true, renderer: "webgl",
+  // Prompt
+  promptOn: true, promptStyle: "flags", promptOpacity: 62, promptTwoLines: true, promptDir: "full",
+  pUser: true, pDir: true, pGit: true, pDur: true, pStatus: true, pTime: false,
+  pcUser: "#64748b", pcDir: "#3b82f6", pcGit: "#22c55e", pcGitDirty: "#eab308", pcDur: "#a855f7", pcErr: "#ef4444", pcTime: "#64748b",
   // Interface
   uiFont: "Geist", uiScale: 100, radius: 18, sideWidth: 268, sidebar: true, density: "comfortable",
   winButtons: "windows", motion: true,
@@ -1087,6 +1107,7 @@ function applyPrefs(save = true) {
   for (const s of sessions.values()) {
     if (s.scheme !== sc.name) { s.term.options.theme = termTheme(); s.scheme = sc.name; }
     const o = termOptions();
+    if (s.webgl) o.cursorBlink = prefs.cursorBlink;
     for (const k in o) if (s.term.options[k] !== o[k]) s.term.options[k] = o[k];
     if (!s.pane.hidden) try { s.fit.fit(); } catch {}
     if (!prefs.autocomplete) hideSuggest(s);
@@ -1239,10 +1260,195 @@ document.addEventListener("dragover", (e) => e.preventDefault());
 document.addEventListener("drop", (e) => e.preventDefault());
 $("#iconFile").onchange =(e) => { if (iconTarget) useIconFile(iconTarget, e.target.files[0]); };
 
+/* ---------- modern prompt (powerline "flags") ----------
+   The shell side lives in src-tauri/src/prompt.bash. The app computes the colors (each segment color is
+   blended with the terminal background by "Opacidade", text color picked for contrast) and sends them at
+   connect time; the prompt reports folder + git back through OSC 7 / OSC 6973, shown in the bar and tab. */
+const PROMPT_SEGS = [
+  ["pUser", "user", "Usuário e máquina"],
+  ["pDir", "dir", "Pasta"],
+  ["pGit", "git", "Git"],
+  ["pDur", "dur", "Duração do comando"],
+  ["pStatus", "status", "Código de erro"],
+  ["pTime", "time", "Hora"],
+];
+const PROMPT_COLORS = [
+  ["pcUser", "user", "Usuário"],
+  ["pcDir", "dir", "Pasta"],
+  ["pcGit", "git", "Git (limpo)"],
+  ["pcGitDirty", "gitd", "Git (alterações)"],
+  ["pcDur", "dur", "Duração"],
+  ["pcErr", "err", "Erro"],
+  ["pcTime", "time", "Hora"],
+];
+const PROMPT_SWATCHES = ["#64748b", "#3b82f6", "#0a84ff", "#22c55e", "#eab308", "#f97316", "#ef4444", "#a855f7", "#ec4899", "#14b8a6", "#1e293b"];
+
+const termBg = () => schemeOf().bg || "#0c0e14";
+const blendHex = (hex, a) => mix(rgb(termBg()), rgb(hex), a);
+const contrastFg = (c) => (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2] > 150 ? [24, 24, 28] : [244, 245, 248]);
+
+/** Segment colors as the prompt will draw them (shared by the config sent to the server and the preview). */
+function promptPalette() {
+  const a = prefs.promptOpacity / 100, out = {};
+  for (const [k, id] of PROMPT_COLORS) {
+    const base = /^#[0-9a-f]{6}$/i.test(prefs[k]) ? prefs[k] : PREF_DEFAULT[k];
+    const bg = prefs.promptStyle === "plain" ? rgb(base) : blendHex(base, a);
+    out[id] = { bg, fg: contrastFg(bg) };
+  }
+  return out;
+}
+
+/** Config for the backend (keys/values are re-validated in Rust). null = start the normal shell. */
+function promptConfig() {
+  if (!prefs.promptOn) return null;
+  const pal = promptPalette(), cfg = {
+    style: prefs.promptStyle,
+    two: prefs.promptTwoLines ? "1" : "0",
+    dirmode: prefs.promptDir,
+    segs: PROMPT_SEGS.filter(([k]) => prefs[k]).map(([, id]) => id).join(" "),
+    c_ok: "74;222;128",
+    c_bad: "248;113;113",
+  };
+  for (const [id, c] of Object.entries(pal)) { cfg[`c_${id}_bg`] = c.bg.join(";"); cfg[`c_${id}_fg`] = c.fg.join(";"); }
+  return cfg;
+}
+
+/** Listen for the folder / git reports the prompt prints (invisible OSC sequences). */
+function setupShellIntegration(s) {
+  const p = s.term.parser;
+  p.registerOscHandler(7, (data) => {
+    try { s.cwdAbs = decodeURIComponent(new URL(data).pathname); } catch {}
+    return true;
+  });
+  p.registerOscHandler(6973, (data) => {
+    if (data.startsWith("cwd=")) s.cwd = data.slice(4);
+    else if (data.startsWith("git=")) {
+      const [branch, staged, modified, untracked, ahead, behind, conflicts] = data.slice(4).split("|");
+      s.git = branch ? { branch, staged: +staged, modified: +modified, untracked: +untracked, ahead: +ahead, behind: +behind, conflicts: +conflicts } : null;
+      updateLocation(s);
+    }
+    return true;
+  });
+}
+
+function updateLocation(s) {
+  const crumb = $('[data-r="crumb"]', s.pane), gchip = $('[data-r="git"]', s.pane);
+  if (s.cwd) {
+    crumb.hidden = false;
+    $("span", crumb).textContent = s.cwd;
+    crumb.title = `${s.cwdAbs || s.cwd} — clique para copiar`;
+  }
+  if (s.git) {
+    const g = s.git, dirty = g.staged + g.modified + g.untracked + g.conflicts > 0;
+    const bits = [g.conflicts && `✖${g.conflicts}`, g.staged && `✚${g.staged}`, g.modified && `●${g.modified}`, g.untracked && `?${g.untracked}`, g.ahead && `⇡${g.ahead}`, g.behind && `⇣${g.behind}`].filter(Boolean).join(" ");
+    gchip.hidden = false;
+    gchip.classList.toggle("dirty", dirty);
+    gchip.innerHTML = `<span class="g-br">⎇ ${esc(g.branch)}</span>${bits ? `<span class="g-st">${esc(bits)}</span>` : ""}`;
+    gchip.title = dirty ? "Repositório com alterações" : "Repositório limpo";
+  } else gchip.hidden = true;
+  // tab: machine name + current folder
+  const leaf = s.cwd && s.cwd !== "~" ? s.cwd.split("/").filter(Boolean).pop() : "";
+  $(".tname", s.tab).textContent = leaf ? `${s.host.name} · ${leaf}` : s.host.name;
+}
+
+/* --- Personalizar → Prompt --- */
+function promptPreviewHtml(sample) {
+  const pal = promptPalette(), style = prefs.promptStyle;
+  const css = (c) => `rgb(${c.join(",")})`;
+  const segs = [];
+  if (prefs.pUser) segs.push(["user", "joao@fedora"]);
+  if (prefs.pDir) segs.push(["dir", prefs.promptDir === "short" ? "…/projetos/app" : "~/projetos/app"]);
+  if (prefs.pGit) segs.push(sample.dirty ? ["gitd", "⎇ main ✚1 ●2 ?1"] : ["git", "⎇ main"]);
+  if (prefs.pDur && sample.dur) segs.push(["dur", "12s"]);
+  if (prefs.pStatus && sample.err) segs.push(["err", "✘ 1"]);
+  if (prefs.pTime) segs.push(["time", "14:32"]);
+  let out = "";
+  if (style === "plain") {
+    out = segs.map(([id, t]) => `<b style="color:${css(pal[id].bg)}">${esc(t)}</b>`).join(" ");
+  } else {
+    segs.forEach(([id, t], i) => {
+      const c = pal[id], next = segs[i + 1] && pal[segs[i + 1][0]];
+      if (i === 0 && style === "round") out += `<i class="pp-cap-l" style="color:${css(c.bg)}"></i>`;
+      out += `<span class="pp-seg" style="background:${css(c.bg)};color:${css(c.fg)}">${esc(t)}</span>`;
+      out += `<i class="pp-sep pp-${style}" style="color:${css(c.bg)};background:${next ? css(next.bg) : "transparent"}"></i>`;
+    });
+  }
+  const ok = sample.err ? "rgb(248,113,113)" : "rgb(74,222,128)";
+  const cmd = `<span class="pp-cmd">${esc(sample.cmd)}</span>`;
+  return prefs.promptTwoLines ? `<div class="pp-line">${out}</div><div class="pp-line"><b style="color:${ok}">❯</b> ${cmd}</div>` : `<div class="pp-line">${out} ${cmd}</div>`;
+}
+
+function tabPrompt() {
+  const prev = h("div", { class: "pp-preview" });
+  prev.style.background = termBg();
+  const paint = () => {
+    prev.innerHTML = [
+      promptPreviewHtml({ dirty: false, cmd: "git pull" }),
+      promptPreviewHtml({ dirty: true, err: true, dur: true, cmd: "docker compose up -d" }),
+    ].join('<div class="pp-gap"></div>');
+    prev.classList.toggle("off", !prefs.promptOn);
+  };
+  paint();
+
+  const segGrid = h("div", { class: "pp-chips" });
+  for (const [k, , label] of PROMPT_SEGS) {
+    const b = h("button", { class: "pp-chip" + (prefs[k] ? " on" : "") }, label);
+    b.onclick = () => { prefs[k] = !prefs[k]; applyPrefs(); renderPrefs(); };
+    segGrid.append(b);
+  }
+
+  const colorRows = h("div", { class: "pp-colors" });
+  for (const [k, , label] of PROMPT_COLORS) {
+    const row = h("div", { class: "pp-crow" }, `<span class="pp-clabel">${label}</span>`);
+    const sw = h("div", { class: "swatches pp-sw" });
+    for (const c of PROMPT_SWATCHES) {
+      const b = h("button", { class: "sw" + (prefs[k].toLowerCase() === c ? " on" : ""), style: `--c:${c}`, title: c });
+      b.onclick = () => { prefs[k] = c; applyPrefs(); renderPrefs(); };
+      sw.append(b);
+    }
+    const custom = !PROMPT_SWATCHES.includes(prefs[k].toLowerCase());
+    const pick = h("label", { class: "sw sw-custom" + (custom ? " on" : ""), title: "Qualquer cor", style: custom ? `--c:${prefs[k]}` : "" }, `<input type="color" value="${prefs[k]}">`);
+    const ci = $("input", pick);
+    ci.oninput = () => { prefs[k] = ci.value; applyPrefs(false); paint(); };
+    ci.onchange = () => { applyPrefs(); renderPrefs(); };
+    sw.append(pick);
+    row.append(sw);
+    colorRows.append(row);
+  }
+
+  const s = sessions.get(activeSid);
+  const applyRow = h("div", { class: "pp-apply" }, `<span class="phint2">Vale para as próximas conexões — nada é alterado no servidor. Funciona com bash; zsh e fish ficam com o prompt de vocês.</span>`);
+  if (s && (s.state === "connected" || s.state === "closed" || s.state === "error")) {
+    const b = h("button", { class: "btn" }, "Reconectar esta aba");
+    b.onclick = () => { reconnect(s); togglePrefs(false); };
+    applyRow.append(b);
+  }
+
+  // live preview: sliders redraw it without rebuilding the whole tab
+  const op = ctlSlider("promptOpacity", "Opacidade das flags", { min: 20, max: 100, fmt: (v) => v + "%" });
+  $("input", op).addEventListener("input", paint);
+
+  return [
+    prev,
+    pgroup(ctlToggle("promptOn", "Prompt moderno", "Pasta, git, duração e erro em “flags” coloridas")),
+    psec("Estilo"),
+    pgroup(
+      ctlSeg("promptStyle", "Formato", [["flags", "Setas"], ["round", "Pílulas"], ["slant", "Diagonal"], ["plain", "Texto"]]),
+      prefs.promptStyle === "plain" ? null : op,
+      ctlSeg("promptTwoLines", "Comando", [[true, "Linha de baixo"], [false, "Mesma linha"]]),
+      ctlSeg("promptDir", "Pasta", [["full", "Completa"], ["short", "Curta"]])),
+    psec("O que mostrar"),
+    segGrid,
+    psec("Cores"),
+    pgroup(colorRows),
+    applyRow,
+  ];
+}
+
 /* ---------- settings panel (gear) ----------
    Four tabs built from small control builders; every change applies live and is saved to localStorage. */
 let prefsTab = "tema";
-const PREF_TABS = [["tema", "Tema"], ["terminal", "Terminal"], ["interface", "Interface"], ["servidores", "Servidores"]];
+const PREF_TABS = [["tema", "Tema"], ["terminal", "Terminal"], ["prompt", "Prompt"], ["interface", "Interface"], ["servidores", "Servidores"]];
 
 const isDefault = (k) => JSON.stringify(prefs[k]) === JSON.stringify(PREF_DEFAULT[k]);
 const rstBtn = (k) => `<button class="rst${isDefault(k) ? " off" : ""}" data-k="${k}" title="Restaurar padrão (${esc(rstLabel(k))})">${I.undo}</button>`;
@@ -1449,7 +1655,7 @@ function renderPrefs() {
   const body = $("#prefsBody");
   const keep = body.scrollTop;
   body.innerHTML = "";
-  body.append(...{ tema: tabTema, terminal: tabTerminal, interface: tabInterface, servidores: tabServidores }[prefsTab]());
+  body.append(...{ tema: tabTema, terminal: tabTerminal, prompt: tabPrompt, interface: tabInterface, servidores: tabServidores }[prefsTab]());
   if (prefsTab === "servidores") renderIconList();
   body.scrollTop = keep;
 }
@@ -1668,6 +1874,31 @@ function startFlood() {
 
 /* ---------- browser preview mock (fictional data; only used outside Tauri) ---------- */
 
+/** Mirrors prompt.bash's rendering for the browser preview (escape sequences + OSC reports). */
+function mockPrompt(cfg, dir, git, ec = 0) {
+  if (!cfg) return "\x1b[1;32madmin@fedora\x1b[0m:\x1b[1;34m" + dir + "\x1b[0m$ ";
+  const style = cfg.style, segsOn = cfg.segs.split(" ");
+  const sep = { flags: "\ue0b0", round: "\ue0b4", slant: "\ue0bc", plain: "" }[style], cap = { round: "\ue0b6", slant: "\ue0ba" }[style] || "";
+  const e = (c) => `\x1b[${c}m`;
+  let out = "", prev = "";
+  const seg = (id, text) => {
+    const bg = cfg[`c_${id}_bg`], fg = cfg[`c_${id}_fg`];
+    if (style === "plain") { out += (out ? " " : "") + e(`1;38;2;${bg}`) + text + e(0); return; }
+    out += prev ? e(`38;2;${prev};48;2;${bg}`) + sep : cap ? e(`0;38;2;${bg}`) + cap : "";
+    out += e(`0;48;2;${bg};38;2;${fg}`) + ` ${text} `;
+    prev = bg;
+  };
+  if (segsOn.includes("user")) seg("user", "admin@fedora");
+  if (segsOn.includes("dir")) seg("dir", cfg.dirmode === "short" && dir.split("/").length > 3 ? "…/" + dir.split("/").slice(-2).join("/") : dir);
+  const dirty = git && (git.modified || git.untracked);
+  if (git && segsOn.includes("git")) seg(dirty ? "gitd" : "git", `⎇ ${git.branch}${git.modified ? " ●" + git.modified : ""}${git.untracked ? " ?" + git.untracked : ""}`);
+  if (ec && segsOn.includes("status")) seg("err", `✘ ${ec}`);
+  if (style !== "plain" && prev) out += e(`0;38;2;${prev}`) + (sep || "\ue0b0") + e(0);
+  const osc = `\x1b]6973;cwd=${dir}\x07\x1b]6973;git=${git ? `${git.branch}|0|${git.modified || 0}|${git.untracked || 0}|0|0|0` : ""}\x07`;
+  const line2 = cfg.two === "1" ? "\r\n" + e(`1;38;2;${ec ? cfg.c_bad : cfg.c_ok}`) + "❯" + e(0) + " " : " ";
+  return osc + "\r\n" + out + line2;
+}
+
 function mockInvoke(cmd, args) {
   const db = (mockInvoke.db ||= [
     { id: "1", name: "Fedora Server", host: "192.168.1.20", port: 22, user: "admin", auth: "key", keyPath: "", color: "#5ac8fa", hasSecret: false },
@@ -1677,7 +1908,8 @@ function mockInvoke(cmd, args) {
     { id: "5", name: "Home Assistant", host: "192.168.1.60", port: 22, user: "hass", auth: "password", keyPath: "", color: "#bf5af2", hasSecret: true },
   ]);
   const ping = { "192.168.1.20": 2, "192.168.1.10": 1, "192.168.1.53": 3, "192.168.1.40": 4, "192.168.1.60": null };
-  const P = "\x1b[1;32madmin@fedora\x1b[0m:\x1b[1;34m~\x1b[0m$ ";
+  if (cmd === "connect") mockInvoke.promptCfg = args.prompt;
+  const P = mockPrompt(mockInvoke.promptCfg, "~/projetos/app", { branch: "main", modified: 2, untracked: 1 });
   const demo = [
     "Last login: Thu Nov 12 17:02:11 2026 from 192.168.1.5\r\n",
     P + "uptime\r\n 17:04:52 up 23 days,  4:11,  1 user,  load average: 0.18, 0.22, 0.19\r\n",

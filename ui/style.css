@@ -673,3 +673,57 @@ body.compact .findbar { top: 46px; }
 .term.cur-off .xterm.focus .xterm-rows .xterm-cursor.xterm-cursor-block { background-color: transparent !important; color: inherit !important; }
 .term.cur-off .xterm.focus .xterm-rows .xterm-cursor.xterm-cursor-bar,
 .term.cur-off .xterm.focus .xterm-rows .xterm-cursor.xterm-cursor-underline { box-shadow: none !important; }
+
+/* ===================== folder + git in the terminal bar ===================== */
+.crumb {
+  display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 11px; min-width: 0; max-width: 34%;
+  background: var(--fill); color: var(--text-2); font: 11.5px var(--mono); transition: background .12s, color .12s;
+}
+.crumb:hover { background: var(--fill-2); color: var(--text); }
+.crumb svg { width: 13px; height: 13px; flex: none; color: var(--accent); }
+.crumb span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: left; unicode-bidi: plaintext; }
+.gitchip {
+  display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px; border-radius: 11px; white-space: nowrap;
+  font: 600 11px var(--mono); color: #9be7a8; background: color-mix(in srgb, #22c55e 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #22c55e 30%, transparent);
+}
+.gitchip.dirty { color: #f6d77a; background: color-mix(in srgb, #eab308 15%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, #eab308 32%, transparent); }
+.gitchip .g-st { font-weight: 500; opacity: .85; }
+.stage.light .gitchip { color: #166534; }
+.stage.light .gitchip.dirty { color: #854d0e; }
+
+/* ===================== Personalizar → Prompt ===================== */
+.pp-preview {
+  border-radius: calc(var(--radius) * .75); padding: 12px 12px 14px; font: 12px/1.55 var(--mono); color: #e6e8ef;
+  box-shadow: inset 0 0 0 1px var(--hair-2); overflow: hidden; transition: opacity .2s;
+  min-height: max-content; /* inside the panel grid an overflow:hidden item could otherwise collapse */
+}
+.pp-preview.off { opacity: .35; filter: grayscale(.7); }
+.pp-line { display: flex; align-items: center; white-space: nowrap; min-height: 19px; }
+.pp-gap { height: 10px; }
+.pp-seg { padding: 0 6px; height: 19px; display: inline-flex; align-items: center; }
+.pp-sep, .pp-cap-l { display: inline-block; width: 9px; height: 19px; flex: none; position: relative; }
+.pp-sep::after, .pp-cap-l::after { content: ""; position: absolute; inset: 0; background: currentColor; }
+.pp-flags::after { clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.pp-round::after { border-radius: 0 50% 50% 0 / 0 50% 50% 0; }
+.pp-slant::after { clip-path: polygon(0 0, 100% 0, 0 100%); }
+.pp-cap-l::after { border-radius: 50% 0 0 50% / 50% 0 0 50%; }
+.pp-cmd { color: #e6e8ef; margin-left: 2px; }
+.pp-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 2px; }
+.pp-chip {
+  height: 28px; padding: 0 11px; border-radius: 14px; font-size: 12px; font-weight: 550; color: var(--text-2);
+  background: rgba(255,255,255,.05); box-shadow: inset 0 0 0 1px var(--hair); transition: all .15s var(--ease);
+}
+.pp-chip:hover { background: var(--fill-2); color: var(--text); }
+.pp-chip.on { color: var(--text); background: color-mix(in srgb, var(--accent) 26%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent); }
+.pp-colors { display: grid; gap: 8px; }
+.pp-crow { display: grid; gap: 5px; }
+.pp-crow + .pp-crow { padding-top: 8px; border-top: 1px solid var(--hair); }
+.pp-clabel { font-size: 12px; font-weight: 550; }
+.pp-sw { flex-wrap: wrap; gap: 6px; padding: 2px; }
+.pp-sw .sw { width: 20px; height: 20px; }
+.pp-apply { display: grid; gap: 8px; padding: 2px 4px 4px; justify-items: start; }
+/* settings body: a column whose items never shrink (an overflow:hidden item, like the prompt
+   preview, could otherwise be squeezed by the fixed-height scroll container) */
+.prefs-body { display: flex; flex-direction: column; }
+.prefs-body > * { flex-shrink: 0; }

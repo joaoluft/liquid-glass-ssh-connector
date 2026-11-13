@@ -146,7 +146,7 @@ fn friendly(e: &russh::Error) -> String {
     }
 }
 
-pub async fn run(sid: String, host: HostEntry, secret_override: Option<String>, remember: bool, cols: u32, rows: u32, ev: Channel<Ev>) {
+pub async fn run(sid: String, host: HostEntry, secret_override: Option<String>, remember: bool, cols: u32, rows: u32, prompt: Option<HashMap<String, String>>, ev: Channel<Ev>) {
     let secret = secret_override.clone().or_else(|| host.secret.as_deref().and_then(store::unprotect));
 
     if host.auth == "password" && secret.as_deref().unwrap_or("").is_empty() {
@@ -228,7 +228,10 @@ pub async fn run(sid: String, host: HostEntry, secret_override: Option<String>, 
     let mut channel = match async {
         let ch = h.channel_open_session().await?;
         ch.request_pty(false, "xterm-256color", cols.max(20), rows.max(5), 0, 0, &[]).await?;
-        ch.request_shell(false).await?;
+        match &prompt {
+            Some(cfg) => ch.exec(false, prompt_command(cfg)).await?,
+            None => ch.request_shell(false).await?,
+        }
         Ok::<_, russh::Error>(ch)
     }
     .await
@@ -438,4 +441,68 @@ pub async fn fetch_history(sid: &str) -> Result<Vec<String>, String> {
         }
     }
     Ok(cmds)
+}
+
+
+/// The session-only prompt (see prompt.bash), started in place of the plain login shell.
+const PROMPT_RC: &str = include_str!("prompt.bash");
+const PROMPT_KEYS: &[&str] = &[
+    "style", "two", "dirmode", "segs", "c_user_bg", "c_user_fg", "c_dir_bg", "c_dir_fg", "c_git_bg", "c_git_fg",
+    "c_gitd_bg", "c_gitd_fg", "c_dur_bg", "c_dur_fg", "c_err_bg", "c_err_fg", "c_time_bg", "c_time_fg", "c_ok", "c_bad",
+];
+
+/// Remote command: if the login shell is bash, write the prompt rc to a temp file (it deletes itself
+/// on load) and start `bash --rcfile` with it; any other shell (zsh, fish…) just starts as usual.
+/// App options become `__sshc_*` assignments, accepted only for known keys and a tiny charset.
+fn prompt_command(cfg: &HashMap<String, String>) -> String {
+    let quoted = prompt_rc(cfg).replace('\'', r"'\''");
+    format!(
+        "case \"${{SHELL##*/}}\" in bash) ;; *) exec \"${{SHELL:-/bin/sh}}\" -l ;; esac; \
+         command -v bash >/dev/null 2>&1 || exec \"${{SHELL:-/bin/sh}}\" -l; \
+         f=$(mktemp 2>/dev/null || echo \"/tmp/.sshc_rc_$$\"); \
+         printf '%s\n' '{quoted}' > \"$f\" && SSHC_RC=\"$f\" exec bash --rcfile \"$f\" -i; \
+         exec \"${{SHELL:-/bin/sh}}\" -l"
+    )
+}
+
+/// The rc file: validated `__sshc_*` assignments followed by prompt.bash (LF line endings only).
+fn prompt_rc(cfg: &HashMap<String, String>) -> String {
+    let mut rc = String::new();
+    for k in PROMPT_KEYS {
+        if let Some(v) = cfg.get(*k) {
+            if v.len() <= 80 && v.chars().all(|c| c.is_ascii_alphanumeric() || " ;_-".contains(c)) {
+                rc.push_str(&format!("__sshc_{k}='{v}'\n"));
+            }
+        }
+    }
+    rc.push_str(&PROMPT_RC.replace('\r', ""));
+    rc
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Writes the remote command for a sample config, so it can be run against a real bash.
+    #[test]
+    fn prompt_command_is_built_and_sanitized() {
+        let mut cfg = HashMap::new();
+        cfg.insert("style".to_string(), "round".to_string());
+        cfg.insert("two".to_string(), "0".to_string());
+        cfg.insert("c_dir_bg".to_string(), "10;20;30".to_string());
+        cfg.insert("segs".to_string(), "dir git".to_string());
+        cfg.insert("evil".to_string(), "x".to_string()); // unknown key: dropped
+        cfg.insert("c_user_bg".to_string(), "1'; rm -rf ~; '".to_string()); // bad chars: dropped
+        let rc = prompt_rc(&cfg);
+        assert!(rc.contains("__sshc_style='round'"));
+        assert!(rc.contains("__sshc_c_dir_bg='10;20;30'"));
+        assert!(rc.contains("__sshc_segs='dir git'"));
+        assert!(!rc.contains("__sshc_evil"));
+        assert!(!rc.contains("rm -rf"));
+        assert!(!rc.contains('\r'));
+        let cmd = prompt_command(&cfg);
+        if let Ok(path) = std::env::var("SSHC_DUMP_CMD") {
+            std::fs::write(path, &cmd).unwrap();
+        }
+    }
 }

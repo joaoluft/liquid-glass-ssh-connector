@@ -13,6 +13,8 @@ use std::time::Duration;
 #[derive(Clone)]
 struct Flood {
     fps: u64,
+    /// stdin of a real bash started for the app's prompt command (see exec_request)
+    shells: Arc<tokio::sync::Mutex<std::collections::HashMap<ChannelId, tokio::process::ChildStdin>>>,
 }
 
 impl server::Server for Flood {
@@ -49,8 +51,42 @@ impl server::Handler for Flood {
     }
 
     /// `exec` requests (the app reads shell history this way): answer with a fake history.
-    async fn exec_request(&mut self, ch: ChannelId, _cmd: &[u8], s: &mut Session) -> Result<(), Self::Error> {
+    async fn exec_request(&mut self, ch: ChannelId, cmd: &[u8], s: &mut Session) -> Result<(), Self::Error> {
         s.channel_success(ch)?;
+        let cmd = String::from_utf8_lossy(cmd).to_string();
+        // The app's modern-prompt command: run it in a real bash (Git for Windows) so the whole path
+        // (remote command, prompt.bash, colors, OSC reports) can be checked end to end.
+        // HOME comes from FLOOD_HOME. No tty here, so we echo input ourselves and fix line endings.
+        if cmd.contains("SSHC_RC") {
+            use tokio::io::AsyncReadExt;
+            let bash = std::env::var("FLOOD_BASH").unwrap_or_else(|_| r"C:\Program Files\Git\bin\bash.exe".into());
+            let mut child = tokio::process::Command::new(bash)
+                .arg("-c").arg(&cmd)
+                .env("SHELL", "/usr/bin/bash")
+                .env("HOME", std::env::var("FLOOD_HOME").unwrap_or_default())
+                .current_dir(std::env::var("FLOOD_HOME").unwrap_or_else(|_| ".".into()))
+                .stdin(std::process::Stdio::piped())
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
+                .kill_on_drop(true)
+                .spawn()
+                .expect("bash");
+            self.shells.lock().await.insert(ch, child.stdin.take().unwrap());
+            for mut pipe in [Box::new(child.stdout.take().unwrap()) as Box<dyn tokio::io::AsyncRead + Unpin + Send>, Box::new(child.stderr.take().unwrap())] {
+                let h = s.handle();
+                tokio::spawn(async move {
+                    let mut buf = [0u8; 4096];
+                    while let Ok(n) = pipe.read(&mut buf).await {
+                        if n == 0 { break; }
+                        let fixed: Vec<u8> = buf[..n].iter().flat_map(|&b| if b == b'\n' { vec![b'\r', b'\n'] } else { vec![b] }).collect();
+                        if h.data(ch, CryptoVec::from(fixed)).await.is_err() { break; }
+                    }
+                });
+            }
+            let h = s.handle();
+            tokio::spawn(async move { let _ = child.wait().await; let _ = h.close(ch).await; });
+            return Ok(());
+        }
         let hist = "ls -la\n#1700000000\nsudo dnf upgrade -y\n: 1700000001:0;docker compose pull\ndocker compose up -d\ndocker logs -f jellyfin\nsystemctl status nginx\n";
         s.data(ch, CryptoVec::from(hist.to_string()))?;
         s.exit_status_request(ch, 0)?;
@@ -61,6 +97,14 @@ impl server::Handler for Flood {
 
     /// Echo keystrokes back (Enter -> newline), so typing can be verified end to end.
     async fn data(&mut self, ch: ChannelId, data: &[u8], s: &mut Session) -> Result<(), Self::Error> {
+        if let Some(stdin) = self.shells.lock().await.get_mut(&ch) {
+            use tokio::io::AsyncWriteExt;
+            let echo: Vec<u8> = data.iter().flat_map(|&b| if b == b'\r' { vec![b'\r', b'\n'] } else { vec![b] }).collect();
+            s.data(ch, CryptoVec::from(echo))?;
+            let input: Vec<u8> = data.iter().map(|&b| if b == b'\r' { b'\n' } else { b }).collect();
+            let _ = stdin.write_all(&input).await;
+            return Ok(());
+        }
         let echo: Vec<u8> = data.iter().flat_map(|&b| if b == b'\r' { vec![b'\r', b'\n'] } else { vec![b] }).collect();
         s.data(ch, CryptoVec::from(echo))?;
         Ok(())
@@ -121,5 +165,5 @@ async fn main() {
         ..Default::default()
     };
     println!("flood server on 127.0.0.1:{port} at {fps} fps");
-    Flood { fps }.run_on_address(Arc::new(cfg), ("127.0.0.1", port)).await.unwrap();
+    Flood { fps, shells: Default::default() }.run_on_address(Arc::new(cfg), ("127.0.0.1", port)).await.unwrap();
 }

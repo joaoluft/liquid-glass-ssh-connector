@@ -23,6 +23,19 @@ A engrenagem na barra de título (ou `Ctrl+,`) abre o painel de personalização
 - **Servidores:** ícone personalizado para cada máquina
 - **Exportar / Importar** o tema pela área de transferência para levar a outro PC
 
+## Prompt moderno
+Ao conectar, o terminal ganha um prompt em "flags" no estilo powerline: **usuário@máquina ▶ pasta ▶ git**
+(branch e alterações: `✚` preparados, `●` modificados, `?` novos, `⇡⇣` à frente/atrás), duração de comandos
+longos e código de erro; o `❯` fica vermelho quando o último comando falha. A barra do terminal mostra a
+pasta atual (clique para copiar) e a branch, e a aba mostra o nome da pasta.
+
+- Personalizável em **Personalizar → Prompt**: formato (setas, pílulas, diagonal ou texto), opacidade das
+  flags, o que mostrar, cor de cada flag, comando na mesma linha ou na de baixo, pasta completa ou curta —
+  com pré-visualização ao vivo. Mudanças valem para as próximas conexões.
+- **Nada é alterado no servidor:** o prompt vale só para a sessão do app (o bash é iniciado com uma
+  configuração temporária que se apaga sozinha). Funciona com bash; zsh e fish mantêm o prompt de vocês.
+- As setas são desenhadas pela GPU (renderizador WebGL), sem precisar instalar fontes especiais.
+
 ## Buscar e sugestões
 - **Lupa** (ícone no topo do terminal ou `Ctrl+Shift+F`): busca na saída e no histórico de rolagem, destaca todas as ocorrências, mostra "3 de 12", com maiúsculas/minúsculas, palavra inteira e regex. `Enter`/`Shift+Enter` ou `F3` navegam.
 - **Sugestões de comandos:** enquanto você digita, aparecem comandos do histórico do próprio servidor (bash, zsh ou fish, lido ao conectar) e do que você rodou na sessão. `↑↓` escolhem, `→` aceita, `Esc` fecha; o `Tab` continua sendo o autocomplete do shell. Senhas digitadas (que não aparecem na tela) nunca entram no histórico, nada é gravado em disco e as sugestões somem dentro de vim/htop. Dá para desligar em Personalizar → Terminal.

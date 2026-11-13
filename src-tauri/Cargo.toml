@@ -1,6 +1,6 @@
 [package]
 name = "ssh-connector"
-version = "1.5.0"
+version = "1.6.0"
 description = "SSH Connector — cliente SSH minimalista"
 edition = "2021"
 
@@ -32,4 +32,4 @@ panic = "abort"
 strip = true
 
 [dev-dependencies]
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "process", "io-util"] }
