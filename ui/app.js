@@ -35,6 +35,8 @@ const I = {
   clear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"><circle cx="12" cy="12" r="8"/></svg>',
   chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',
+  image: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>',
+  sidebar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg>',
   alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 8v5M12 16.5h.01"/><circle cx="12" cy="12" r="9"/></svg>',
 };
 
@@ -301,13 +303,8 @@ function createSession(sid, host) {
   $("#stage").append(pane);
 
   const term = new Terminal({
-    fontFamily: termFont(),
-    fontSize: prefs.size,
-    lineHeight: 1.2,
-    cursorBlink: true,
-    cursorStyle: "bar",
+    ...termOptions(),
     allowTransparency: true,
-    scrollback: 4000,
     theme: termTheme(),
     macOptionIsMeta: true,
     rightClickSelectsWord: false,
@@ -334,6 +331,8 @@ function createSession(sid, host) {
     if ((e.ctrlKey && k === "v") || (e.shiftKey && k === "insert")) { paste(s); return stop(); }
     if (e.ctrlKey && e.shiftKey && k === "a") { term.selectAll(); return stop(); }
     if (e.ctrlKey && e.shiftKey && k === "w") { closeSession(sid); return stop(); }
+    if (e.ctrlKey && e.shiftKey && k === "b") { $("#sideBtn").click(); return stop(); }
+    if (e.ctrlKey && k === ",") { togglePrefs(); return stop(); }
     if (e.ctrlKey && k === "tab") { cycle(e.shiftKey ? -1 : 1); return stop(); }
     return true;
   });
@@ -714,11 +713,33 @@ function termTheme() {
 
 const PREF_KEY = "appearance.v1";
 // blocks: 54% reproduces the original glass (alpha .46 / .72 / .62)
-const PREF_DEFAULT = { app: 0, blocks: 54, font: "Geist Mono", size: 13.5, scheme: "Liquid Glass" };
+const PREF_DEFAULT = {
+  // Tema
+  accent: "#0a84ff", wall: "aurora", wallColor: "#0d1017", wallImage: "", wallDim: 0, wallBlur: 0,
+  app: 0, blocks: 54, tint: 0, blur: 28,
+  // Terminal
+  font: "Geist Mono", size: 13.5, lineHeight: 1.2, letterSpacing: 0, weight: "400",
+  scheme: "Liquid Glass", cursorStyle: "bar", cursorBlink: true, padding: 14, contrast: false, scrollback: 4000,
+  // Interface
+  uiFont: "Geist", uiScale: 100, radius: 18, sideWidth: 268, sidebar: true, density: "comfortable",
+  winButtons: "windows", motion: true,
+};
 let prefs = { ...PREF_DEFAULT };
 try { Object.assign(prefs, JSON.parse(localStorage.getItem(PREF_KEY) || "{}")); } catch {}
 
 const termFont = () => `"${prefs.font}", "Geist Mono", Consolas, monospace`;
+const termOptions = () => ({
+  fontFamily: termFont(),
+  fontSize: prefs.size,
+  lineHeight: prefs.lineHeight,
+  letterSpacing: prefs.letterSpacing,
+  fontWeight: prefs.weight,
+  fontWeightBold: String(Math.min(900, +prefs.weight + 300)),
+  cursorStyle: prefs.cursorStyle,
+  cursorBlink: prefs.cursorBlink,
+  scrollback: prefs.scrollback,
+  minimumContrastRatio: prefs.contrast ? 4.5 : 1,
+});
 
 /** true if the font is installed (its metrics differ from both generic fallbacks) */
 const fontInstalled = (() => {
@@ -727,42 +748,120 @@ const fontInstalled = (() => {
   return (name) => ["monospace", "serif"].some((g) => w(`"${name}", ${g}`) !== w(g));
 })();
 
+/* Wallpapers: static layered gradients (painted once, no animation, so they cost nothing at runtime). */
+const WALLS = {
+  aurora: { name: "Aurora", css: "radial-gradient(60% 55% at 12% 8%, rgba(10,132,255,.32), transparent 70%), radial-gradient(50% 50% at 92% 18%, rgba(191,90,242,.24), transparent 70%), radial-gradient(55% 60% at 78% 100%, rgba(48,209,88,.14), transparent 70%), radial-gradient(45% 45% at 20% 95%, rgba(255,55,95,.14), transparent 70%), linear-gradient(180deg, #0b0d14, #07080c)" },
+  midnight: { name: "Meia-noite", css: "radial-gradient(70% 60% at 15% 0%, rgba(94,92,230,.38), transparent 70%), radial-gradient(60% 60% at 100% 100%, rgba(10,60,160,.35), transparent 70%), linear-gradient(160deg, #0a0b1f, #05060d)" },
+  ocean: { name: "Oceano", css: "radial-gradient(65% 60% at 10% 10%, rgba(100,210,255,.30), transparent 70%), radial-gradient(60% 60% at 90% 90%, rgba(0,120,140,.35), transparent 70%), linear-gradient(170deg, #06141c, #03090e)" },
+  sunset: { name: "Pôr do sol", css: "radial-gradient(60% 55% at 10% 5%, rgba(255,159,10,.32), transparent 70%), radial-gradient(55% 55% at 95% 25%, rgba(255,55,95,.30), transparent 70%), radial-gradient(60% 60% at 60% 110%, rgba(120,40,160,.30), transparent 70%), linear-gradient(180deg, #170b10, #0b0608)" },
+  forest: { name: "Floresta", css: "radial-gradient(60% 60% at 10% 10%, rgba(48,209,88,.24), transparent 70%), radial-gradient(60% 60% at 95% 90%, rgba(20,110,80,.32), transparent 70%), linear-gradient(170deg, #07140d, #040a07)" },
+  rose: { name: "Rosé", css: "radial-gradient(60% 55% at 15% 10%, rgba(255,55,95,.30), transparent 70%), radial-gradient(55% 55% at 90% 85%, rgba(191,90,242,.26), transparent 70%), linear-gradient(170deg, #160a12, #0a0509)" },
+  graphite: { name: "Grafite", css: "radial-gradient(70% 60% at 20% 0%, rgba(255,255,255,.08), transparent 70%), linear-gradient(180deg, #16171b, #0c0d10)" },
+  black: { name: "Preto", css: "#000" },
+  solid: { name: "Cor sólida" },
+  image: { name: "Imagem" },
+};
+const wallCss = (k = prefs.wall) =>
+  k === "solid" ? prefs.wallColor
+  : k === "image" ? (prefs.wallImage ? `center / cover no-repeat url("${prefs.wallImage}")` : WALLS.aurora.css)
+  : (WALLS[k] || WALLS.aurora).css;
+
+/* One-click looks: each preset only sets the keys it lists. */
+const PRESETS = [
+  { name: "Liquid Glass", v: { accent: "#0a84ff", wall: "aurora", scheme: "Liquid Glass", tint: 0, blocks: 54, radius: 18, font: "Geist Mono", cursorStyle: "bar" } },
+  { name: "Meia-noite", v: { accent: "#5e5ce6", wall: "midnight", scheme: "One Half Dark", tint: 30, blocks: 50, radius: 18 } },
+  { name: "Oceano", v: { accent: "#64d2ff", wall: "ocean", scheme: "Solarized Dark", tint: 30, blocks: 50, radius: 18 } },
+  { name: "Pôr do sol", v: { accent: "#ff9f0a", wall: "sunset", scheme: "Liquid Glass", tint: 25, blocks: 54, radius: 18 } },
+  { name: "Floresta", v: { accent: "#30d158", wall: "forest", scheme: "Tango Dark", tint: 25, blocks: 54, radius: 18 } },
+  { name: "Rosé", v: { accent: "#ff375f", wall: "rose", scheme: "Liquid Glass", tint: 30, blocks: 54, radius: 22 } },
+  { name: "Grafite", v: { accent: "#8e8e93", wall: "graphite", scheme: "Dark+", tint: 0, blocks: 25, radius: 12 } },
+  { name: "Clássico", v: { accent: "#3b78ff", wall: "black", scheme: "Campbell", tint: 0, blocks: 0, radius: 4, font: "Cascadia Mono", cursorStyle: "block" } },
+];
+
+const ACCENTS = ["#0a84ff", "#5e5ce6", "#bf5af2", "#ff375f", "#ff453a", "#ff9f0a", "#ffd60a", "#30d158", "#64d2ff", "#8e8e93"];
+
+const UI_FONTS = [
+  { name: "Geist", tag: "padrão" },
+  { name: "Segoe UI" },
+  { name: "Segoe UI Variable" },
+  { name: "Bahnschrift" },
+  { name: "Trebuchet MS" },
+  { name: "Verdana" },
+  { name: "Tahoma" },
+  { name: "Arial" },
+  { name: "Georgia" },
+  { name: "Geist Mono", tag: "mono" },
+];
+
+const mix = (a, b, t) => a.map((x, i) => Math.round(x + (b[i] - x) * t));
+
 function applyPrefs(save = true) {
   const r = document.documentElement.style;
+  const accent = /^#[0-9a-f]{6}$/i.test(prefs.accent) ? prefs.accent : PREF_DEFAULT.accent;
+  r.setProperty("--accent", accent);
+  r.setProperty("--on-accent", isLight(accent) ? "#000" : "#fff");
+
+  // wallpaper
   r.setProperty("--wall-a", String(1 - prefs.app / 100));
+  r.setProperty("--wall-dim", String(prefs.wallDim / 100));
+  r.setProperty("--wall-blur", prefs.wallBlur + "px");
+  $(".wallpaper").style.background = wallCss();
+
+  // glass: transparency, accent tint, blur strength
   const a = 1 - prefs.blocks / 100;
-  r.setProperty("--glass", `rgba(28, 30, 38, ${a.toFixed(3)})`);
-  r.setProperty("--glass-strong", `rgba(30, 32, 42, ${Math.min(1, a + 0.26).toFixed(3)})`);
+  const tint = (prefs.tint / 100) * 0.35;
+  const g1 = mix([28, 30, 38], rgb(accent), tint), g2 = mix([30, 32, 42], rgb(accent), tint);
+  r.setProperty("--glass", `rgba(${g1.join(",")}, ${a.toFixed(3)})`);
+  r.setProperty("--glass-strong", `rgba(${g2.join(",")}, ${Math.min(1, a + 0.26).toFixed(3)})`);
+  r.setProperty("--blur", prefs.blur + "px");
+
   // the terminal area takes the scheme's background color, at the blocks' transparency
   const sc = schemeOf();
   const bg = sc.bg ? rgb(sc.bg).join(", ") : "12, 14, 20";
   r.setProperty("--stage-bg", `rgba(${bg}, ${Math.min(1, a + 0.16).toFixed(3)})`);
   $("#stage").classList.toggle("light", !!sc.bg && isLight(sc.bg));
+  r.setProperty("--term-pad", prefs.padding + "px");
+
+  // interface
+  r.setProperty("--sans", `"${prefs.uiFont}", "Geist", "Segoe UI", system-ui, sans-serif`);
+  r.setProperty("--radius", prefs.radius + "px");
+  r.setProperty("--win-radius", Math.min(14, Math.round(prefs.radius * 0.67)) + "px");
+  r.setProperty("--side-w", prefs.sideWidth + "px");
+  const b = document.body.classList;
+  b.toggle("no-side", !prefs.sidebar);
+  b.toggle("compact", prefs.density === "compact");
+  b.toggle("mac", prefs.winButtons === "mac");
+  b.toggle("nomotion", !prefs.motion);
+  $("#sideBtn")?.classList.toggle("on", !prefs.sidebar);
+  setUiScale(prefs.uiScale / 100);
+
   for (const s of sessions.values()) {
     if (s.scheme !== sc.name) { s.term.options.theme = termTheme(); s.scheme = sc.name; }
-    if (s.term.options.fontFamily !== termFont()) s.term.options.fontFamily = termFont();
-    if (s.term.options.fontSize !== prefs.size) s.term.options.fontSize = prefs.size;
+    const o = termOptions();
+    for (const k in o) if (s.term.options[k] !== o[k]) s.term.options[k] = o[k];
     if (!s.pane.hidden) try { s.fit.fit(); } catch {}
   }
-  if (save) try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch {}
+  if (save) {
+    try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); }
+    catch { toast("Não deu para salvar — a imagem de fundo é grande demais"); }
+  }
 }
 
-function syncPrefsUI() {
-  for (const [id, key] of [["app", "app"], ["blocks", "blocks"]]) {
-    const el = $("#r-" + id);
-    el.value = prefs[key];
-    el.style.setProperty("--p", prefs[key] / el.max);
-    $("#o-" + id).textContent = prefs[key] + "%";
-  }
-  $("#o-size").textContent = prefs.size + "px";
-  // each setting's "back to default" arrow shows only while it differs from the default
-  document.querySelectorAll("#prefs .rst").forEach((b) => {
-    if (!b.firstChild) b.innerHTML = I.undo;
-    b.classList.toggle("off", prefs[b.dataset.k] === PREF_DEFAULT[b.dataset.k]);
-    b.title = `Restaurar padrão (${RST_LABEL[b.dataset.k](PREF_DEFAULT[b.dataset.k])})`;
-  });
+/** Interface scale: real webview zoom in the app (crisp, xterm-friendly); CSS zoom in the browser preview. */
+let lastScale = 1;
+function setUiScale(f) {
+  if (f === lastScale) return;
+  lastScale = f;
+  if (T?.webview?.getCurrentWebview) T.webview.getCurrentWebview().setZoom(f).catch(() => {});
+  else document.body.style.zoom = f === 1 ? "" : String(f);
 }
-const RST_LABEL = { app: (v) => v + "%", blocks: (v) => v + "%", size: (v) => v + " px", font: (v) => v, scheme: (v) => v };
+
+const RST_LABEL = {
+  app: (v) => v + "%", blocks: (v) => v + "%", tint: (v) => v + "%", blur: (v) => v + " px", wallDim: (v) => v + "%", wallBlur: (v) => v + " px",
+  size: (v) => v + " px", lineHeight: (v) => v.toFixed(2), letterSpacing: (v) => v + " px", padding: (v) => v + " px",
+  uiScale: (v) => v + "%", radius: (v) => v + " px", sideWidth: (v) => v + " px",
+};
+const rstLabel = (k) => (RST_LABEL[k] ? RST_LABEL[k](PREF_DEFAULT[k]) : String(PREF_DEFAULT[k]));
 
 /**
  * Collapsible picker: the head shows the current choice; clicking it slides open the other options.
@@ -859,6 +958,7 @@ async function useIconFile(host, file) {
 /** one row per saved server: current icon, name, pencil to change it (and undo when it's custom) */
 function renderIconList() {
   const list = $("#iconList");
+  if (!list) return;
   list.innerHTML = "";
   if (!hosts.length) {
     list.append(h("div", { class: "hint", style: "padding:10px" }, "Nenhuma máquina cadastrada ainda."));
@@ -889,43 +989,308 @@ document.addEventListener("dragover", (e) => e.preventDefault());
 document.addEventListener("drop", (e) => e.preventDefault());
 $("#iconFile").onchange =(e) => { if (iconTarget) useIconFile(iconTarget, e.target.files[0]); };
 
-function renderPickers() {
-  renderPicker($("#fontPick"), FONTS, prefs.font, fontRow, (f) => { prefs.font = f.name; applyPrefs(); renderPickers(); });
-  renderPicker($("#schemePick"), SCHEMES, prefs.scheme, schemeRow, (sc) => { prefs.scheme = sc.name; applyPrefs(); renderPickers(); });
-  syncPrefsUI();
+/* ---------- settings panel (gear) ----------
+   Four tabs built from small control builders; every change applies live and is saved to localStorage. */
+let prefsTab = "tema";
+const PREF_TABS = [["tema", "Tema"], ["terminal", "Terminal"], ["interface", "Interface"], ["servidores", "Servidores"]];
+
+const isDefault = (k) => JSON.stringify(prefs[k]) === JSON.stringify(PREF_DEFAULT[k]);
+const rstBtn = (k) => `<button class="rst${isDefault(k) ? " off" : ""}" data-k="${k}" title="Restaurar padrão (${esc(rstLabel(k))})">${I.undo}</button>`;
+const psec = (t) => h("div", { class: "psec" }, t);
+function pgroup(...kids) {
+  const g = h("div", { class: "pgroup" });
+  g.append(...kids.filter(Boolean));
+  return g;
 }
 
-// one handler for every "back to default" arrow (sliders, size, font, scheme)
+function ctlSlider(k, label, { min, max, step = 1, fmt = (v) => v, icons }) {
+  const el = h("div", { class: "pctl" }, `
+    <div class="plabel"><span>${label}</span><span class="pval">${rstBtn(k)}<output></output></span></div>
+    <div class="slider-row">${icons ? `<span class="s-ico">${I[icons[0]]}</span>` : ""}<input type="range" class="ios-range" min="${min}" max="${max}" step="${step}">${icons ? `<span class="s-ico">${I[icons[1]]}</span>` : ""}</div>`);
+  const inp = $("input", el), out = $("output", el);
+  const sync = () => {
+    inp.value = prefs[k];
+    inp.style.setProperty("--p", (prefs[k] - min) / (max - min));
+    out.textContent = fmt(prefs[k]);
+    $(".rst", el).classList.toggle("off", isDefault(k));
+  };
+  inp.oninput = () => { prefs[k] = +inp.value; applyPrefs(false); sync(); };
+  inp.onchange = () => applyPrefs();
+  sync();
+  return el;
+}
+
+function ctlSeg(k, label, opts, hint) {
+  const el = h("div", { class: "pctl" }, `
+    <div class="plabel"><span>${label}</span><span class="pval">${rstBtn(k)}</span></div>
+    <div class="seg">${opts.map(([, l]) => `<button>${l}</button>`).join("")}</div>
+    ${hint ? `<div class="phint2">${hint}</div>` : ""}`);
+  el.querySelectorAll(".seg button").forEach((b, i) => {
+    b.classList.toggle("on", String(prefs[k]) === String(opts[i][0]));
+    b.onclick = () => { prefs[k] = opts[i][0]; applyPrefs(); renderPrefs(); };
+  });
+  return el;
+}
+
+function ctlToggle(k, label, hint) {
+  const el = h("button", { class: "pctl ptoggle" }, `
+    <span class="ptext"><span class="plabel"><span>${label}</span></span>${hint ? `<span class="phint2">${hint}</span>` : ""}</span>
+    <span class="toggle${prefs[k] ? " on" : ""}"></span>`);
+  el.onclick = () => { prefs[k] = !prefs[k]; applyPrefs(); renderPrefs(); };
+  return el;
+}
+
+function ctlStepper(k, label, { min, max, step, unit }) {
+  const el = h("div", { class: "pctl" }, `
+    <div class="plabel"><span>${label}</span><span class="pval">${rstBtn(k)}<span class="stepper"><button data-d="-1" title="Diminuir">−</button><output>${prefs[k]}${unit}</output><button data-d="1" title="Aumentar">+</button></span></span></div>`);
+  el.querySelectorAll("[data-d]").forEach((b) => (b.onclick = () => {
+    prefs[k] = Math.min(max, Math.max(min, Math.round((prefs[k] + step * +b.dataset.d) * 100) / 100));
+    applyPrefs();
+    renderPrefs();
+  }));
+  return el;
+}
+
+function ctlPicker(k, items, row) {
+  const el = h("div", { class: "pgroup flush picker", "data-k": k });
+  renderPicker(el, items, prefs[k], row, (it) => { prefs[k] = it.name; applyPrefs(); renderPrefs(); });
+  $(".rst", el).outerHTML = rstBtn(k);
+  return el;
+}
+
+const uiFontRow = (f) => `<span class="pname" style="font-family:'${f.name}', sans-serif">${esc(f.name)}</span>${f.name !== "Geist" && f.name !== "Geist Mono" && !fontInstalled(f.name) ? `<span class="ptag">não detectada</span>` : f.tag ? `<span class="ptag">${f.tag}</span>` : ""}`;
+
+/* --- Tema --- */
+function tabTema() {
+  const out = [];
+
+  // presets
+  const grid = h("div", { class: "preset-grid" });
+  for (const p of PRESETS) {
+    const active = Object.entries(p.v).every(([k, v]) => prefs[k] === v);
+    const b = h("button", { class: "preset" + (active ? " on" : "") }, `
+      <span class="preset-prev" style="background:${wallCss(p.v.wall).replace(/"/g, "'")}">
+        <i style="background:${p.v.accent}"></i><b></b><b></b>
+      </span><span class="preset-name">${esc(p.name)}</span>`);
+    b.onclick = () => { Object.assign(prefs, p.v); applyPrefs(); renderPrefs(); toast(`Tema “${p.name}” aplicado`); };
+    grid.append(b);
+  }
+  out.push(psec("Temas prontos"), grid);
+
+  // accent
+  const sw = h("div", { class: "swatches accent-sw" });
+  for (const c of ACCENTS) {
+    const b = h("button", { class: "sw" + (prefs.accent.toLowerCase() === c ? " on" : ""), style: `--c:${c}`, title: c });
+    b.onclick = () => { prefs.accent = c; applyPrefs(); renderPrefs(); };
+    sw.append(b);
+  }
+  const custom = !ACCENTS.includes(prefs.accent.toLowerCase());
+  const pick = h("label", { class: "sw sw-custom" + (custom ? " on" : ""), title: "Escolher qualquer cor", style: custom ? `--c:${prefs.accent}` : "" }, `<input type="color" value="${prefs.accent}">`);
+  const ci = $("input", pick);
+  ci.oninput = () => { prefs.accent = ci.value; applyPrefs(false); pick.style.setProperty("--c", ci.value); };
+  ci.onchange = () => { applyPrefs(); renderPrefs(); };
+  sw.append(pick);
+  const accHead = h("div", { class: "plabel" }, `<span>Cor de destaque</span><span class="pval">${rstBtn("accent")}<output>${esc(prefs.accent.toUpperCase())}</output></span>`);
+  out.push(psec("Cores"), pgroup(accHead, sw, ctlSlider("tint", "Cor no vidro", { min: 0, max: 100, fmt: (v) => v + "%" })));
+
+  // wallpaper
+  const walls = h("div", { class: "wall-grid" });
+  for (const [k, w] of Object.entries(WALLS)) {
+    let prev = wallCss(k), inner = "";
+    if (k === "image" && !prefs.wallImage) { prev = "rgba(255,255,255,.06)"; inner = I.image; }
+    if (k === "solid") inner = `<input type="color" value="${prefs.wallColor}" title="Escolher cor">`;
+    const t = h("button", { class: "wall-tile" + (prefs.wall === k ? " on" : ""), title: w.name }, `<span class="wall-prev" style="background:${prev.replace(/"/g, "'")}">${inner}</span><span class="wall-name">${w.name}</span>`);
+    if (k === "solid") {
+      const inp = $("input", t);
+      inp.oninput = () => { prefs.wallColor = inp.value; prefs.wall = "solid"; applyPrefs(false); $(".wall-prev", t).style.background = inp.value; };
+      inp.onchange = () => { applyPrefs(); renderPrefs(); };
+      t.onclick = (e) => { if (e.target === inp) return; prefs.wall = "solid"; applyPrefs(); renderPrefs(); };
+    } else if (k === "image") {
+      t.onclick = () => { if (prefs.wallImage && prefs.wall !== "image") { prefs.wall = "image"; applyPrefs(); renderPrefs(); } else { $("#wallFile").value = ""; $("#wallFile").click(); } };
+    } else {
+      t.onclick = () => { prefs.wall = k; applyPrefs(); renderPrefs(); };
+    }
+    walls.append(t);
+  }
+  const wallKids = [walls];
+  if (prefs.wall === "image" && prefs.wallImage) {
+    const row = h("div", { class: "wall-actions" }, `<button class="pbtn" data-a="swap">${I.image}Trocar imagem</button><button class="pbtn" data-a="del">${I.trash}Remover</button>`);
+    $('[data-a="swap"]', row).onclick = () => { $("#wallFile").value = ""; $("#wallFile").click(); };
+    $('[data-a="del"]', row).onclick = () => { prefs.wallImage = ""; prefs.wall = "aurora"; applyPrefs(); renderPrefs(); };
+    wallKids.push(row);
+  }
+  out.push(psec("Papel de parede"), pgroup(...wallKids,
+    ctlSlider("wallDim", "Escurecer", { min: 0, max: 85, fmt: (v) => v + "%" }),
+    ctlSlider("wallBlur", "Desfocar fundo", { min: 0, max: 40, fmt: (v) => v + " px" })));
+
+  // glass
+  out.push(psec("Vidro"), pgroup(
+    ctlSlider("app", "Transparência do app", { min: 0, max: 90, fmt: (v) => v + "%", icons: ["solid", "clear"] }),
+    ctlSlider("blocks", "Transparência dos blocos", { min: 0, max: 100, fmt: (v) => v + "%", icons: ["solid", "clear"] }),
+    ctlSlider("blur", "Desfoque do vidro", { min: 0, max: 60, fmt: (v) => v + " px" })));
+  return out;
+}
+
+/* --- Terminal --- */
+function tabTerminal() {
+  return [
+    psec("Fonte"),
+    ctlPicker("font", FONTS, fontRow),
+    pgroup(
+      ctlStepper("size", "Tamanho", { min: 9, max: 24, step: 0.5, unit: "px" }),
+      ctlSeg("weight", "Peso", [["300", "Fina"], ["400", "Normal"], ["500", "Média"], ["600", "Forte"]]),
+      ctlSlider("lineHeight", "Altura da linha", { min: 1, max: 2, step: 0.05, fmt: (v) => (+v).toFixed(2) }),
+      ctlSlider("letterSpacing", "Espaço entre letras", { min: -1, max: 4, step: 0.5, fmt: (v) => v + " px" })),
+    psec("Esquema de cores"),
+    ctlPicker("scheme", SCHEMES, schemeRow),
+    pgroup(ctlToggle("contrast", "Contraste mínimo", "Clareia cores que ficariam ilegíveis no fundo")),
+    psec("Cursor"),
+    pgroup(
+      ctlSeg("cursorStyle", "Formato", [["bar", "Barra"], ["block", "Bloco"], ["underline", "Sublinhado"]]),
+      ctlToggle("cursorBlink", "Cursor piscando")),
+    psec("Área do terminal"),
+    pgroup(
+      ctlSlider("padding", "Margem interna", { min: 0, max: 40, fmt: (v) => v + " px" }),
+      ctlSeg("scrollback", "Histórico de linhas", [[1000, "1 mil"], [4000, "4 mil"], [10000, "10 mil"], [25000, "25 mil"]], "Mais histórico = mais memória por aba aberta")),
+  ];
+}
+
+/* --- Interface --- */
+function tabInterface() {
+  return [
+    psec("Texto da interface"),
+    ctlPicker("uiFont", UI_FONTS, uiFontRow),
+    pgroup(ctlSlider("uiScale", "Escala", { min: 80, max: 140, step: 5, fmt: (v) => v + "%" })),
+    psec("Formas"),
+    pgroup(
+      ctlSlider("radius", "Arredondamento", { min: 0, max: 28, fmt: (v) => v + " px" }),
+      ctlSeg("density", "Densidade", [["comfortable", "Confortável"], ["compact", "Compacta"]])),
+    psec("Barra lateral"),
+    pgroup(
+      ctlToggle("sidebar", "Mostrar barra lateral", "Atalho: Ctrl+Shift+B"),
+      prefs.sidebar ? ctlSlider("sideWidth", "Largura", { min: 200, max: 380, step: 4, fmt: (v) => v + " px" }) : null),
+    psec("Janela"),
+    pgroup(
+      ctlSeg("winButtons", "Botões da janela", [["windows", "Windows"], ["mac", "macOS"]]),
+      ctlToggle("motion", "Animações", "Desligue para uma interface mais seca e leve")),
+  ];
+}
+
+/* --- Servidores --- */
+function tabServidores() {
+  const list = h("div", { class: "pgroup flush", id: "iconList" });
+  const hint = h("p", { class: "phint" }, "Sugestão: imagem quadrada de <b>128 × 128 px</b> ou maior (PNG, JPG, WebP ou SVG). Imagens retangulares são recortadas no centro. Também dá para arrastar a imagem até a linha.");
+  return [psec("Ícones dos servidores"), list, hint];
+}
+
+function renderPrefs() {
+  const tabs = $("#prefsTabs");
+  tabs.innerHTML = "";
+  for (const [id, label] of PREF_TABS) {
+    const b = h("button", { class: prefsTab === id ? "on" : "" }, label);
+    b.onclick = () => { prefsTab = id; $("#prefsBody").scrollTop = 0; renderPrefs(); };
+    tabs.append(b);
+  }
+  const body = $("#prefsBody");
+  const keep = body.scrollTop;
+  body.innerHTML = "";
+  body.append(...{ tema: tabTema, terminal: tabTerminal, interface: tabInterface, servidores: tabServidores }[prefsTab]());
+  if (prefsTab === "servidores") renderIconList();
+  body.scrollTop = keep;
+}
+
+// one handler for every "back to default" arrow
 $("#prefs").addEventListener("click", (e) => {
   const k = e.target.closest(".rst")?.dataset.k;
   if (!k) return;
+  e.stopPropagation();
   prefs[k] = PREF_DEFAULT[k];
   applyPrefs();
-  if (k === "font" || k === "scheme") renderPickers();
-  syncPrefsUI();
+  renderPrefs();
 });
 
 function togglePrefs(force) {
   const p = $("#prefs");
   const on = force ?? !p.classList.contains("on");
   if (on === p.classList.contains("on")) return;
-  if (on) { toggleClip(false); renderPickers(); renderIconList(); syncPrefsUI(); }
+  if (on) { toggleClip(false); renderPrefs(); }
   p.classList.toggle("on", on);
   $("#setBtn").classList.toggle("on", on);
   if (!on) sessions.get(activeSid)?.term.focus();
 }
 
-for (const key of ["app", "blocks"]) {
-  $("#r-" + key).oninput = (e) => { prefs[key] = +e.target.value; applyPrefs(false); syncPrefsUI(); };
-  $("#r-" + key).onchange = () => applyPrefs();
+/* wallpaper image: downscaled to at most 1920 px wide JPEG so it fits in localStorage */
+async function imageToWallpaper(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const scale = Math.min(1, 1920 / (img.naturalWidth || 1920));
+    const c = document.createElement("canvas");
+    c.width = Math.round((img.naturalWidth || 1920) * scale);
+    c.height = Math.round((img.naturalHeight || 1080) * scale);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    for (const q of [0.85, 0.7, 0.55]) {
+      const d = c.toDataURL("image/jpeg", q);
+      if (d.length < 1_800_000) return d;
+    }
+    return c.toDataURL("image/jpeg", 0.4);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
-const setSize = (d) => { prefs.size = Math.min(24, Math.max(9, Math.round((prefs.size + d) * 2) / 2)); applyPrefs(); syncPrefsUI(); };
-$("#fsDown").onclick = () => setSize(-0.5);
-$("#fsUp").onclick = () => setSize(0.5);
-$("#prefsReset").onclick = () => { prefs = { ...PREF_DEFAULT }; applyPrefs(); renderPickers(); syncPrefsUI(); };
-document.querySelectorAll("#prefs .s-ico").forEach((el) => (el.innerHTML = I[el.dataset.i]));
+$("#wallFile").onchange = async (e) => {
+  const f = e.target.files[0];
+  if (!f || !f.type.startsWith("image/")) return;
+  try {
+    prefs.wallImage = await imageToWallpaper(f);
+    prefs.wall = "image";
+    applyPrefs();
+    renderPrefs();
+  } catch { toast("Não consegui ler essa imagem"); }
+};
+
+/* export / import (via clipboard, as JSON). The wallpaper image stays out to keep it shareable. */
+$("#prefsExport").onclick = async () => {
+  const { wallImage, ...rest } = prefs;
+  await invoke("clip_write", { text: JSON.stringify({ sshConnectorTheme: 1, prefs: rest }, null, 2) });
+  toast("Tema copiado — cole em outro PC e use Importar");
+};
+$("#prefsImport").onclick = async () => {
+  let data;
+  try { data = JSON.parse((await invoke("clip_read")) || ""); } catch { return toast("A área de transferência não tem um tema válido"); }
+  const src = data?.prefs;
+  if (!data?.sshConnectorTheme || !src || typeof src !== "object") return toast("A área de transferência não tem um tema válido");
+  let n = 0;
+  for (const [k, v] of Object.entries(src)) {
+    if (k in PREF_DEFAULT && k !== "wallImage" && typeof v === typeof PREF_DEFAULT[k]) { prefs[k] = v; n++; }
+  }
+  if (prefs.wall === "image" && !prefs.wallImage) prefs.wall = "aurora";
+  applyPrefs();
+  renderPrefs();
+  toast(`Tema importado (${n} ajustes)`);
+};
+$("#prefsReset").onclick = () => {
+  const btn = $("#prefsReset");
+  if (!btn.dataset.armed) {
+    btn.dataset.armed = "1";
+    btn.textContent = "Confirmar";
+    setTimeout(() => { delete btn.dataset.armed; btn.textContent = "Restaurar tudo"; }, 3000);
+    return;
+  }
+  prefs = { ...PREF_DEFAULT };
+  applyPrefs();
+  renderPrefs();
+  delete btn.dataset.armed;
+  btn.textContent = "Restaurar tudo";
+  toast("Aparência restaurada");
+};
+
 $("#setBtn").innerHTML = I.gear;
 $("#setBtn").onclick = () => togglePrefs();
+$("#sideBtn").innerHTML = I.sidebar;
+$("#sideBtn").onclick = () => { prefs.sidebar = !prefs.sidebar; applyPrefs(); if ($("#prefs").classList.contains("on")) renderPrefs(); };
 $("#prefsClose").innerHTML = I.x;
 $("#prefsClose").onclick = () => togglePrefs(false);
 applyPrefs(false);
@@ -978,6 +1343,7 @@ document.addEventListener("keydown", (e) => {
   else if (e.key === "Escape" && clipOn) { e.preventDefault(); toggleClip(false); }
   else if (e.key === "Escape" && $("#prefs").classList.contains("on")) { e.preventDefault(); togglePrefs(false); }
   else if (e.ctrlKey && e.key === ",") { e.preventDefault(); togglePrefs(); }
+  else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "b") { e.preventDefault(); $("#sideBtn").click(); }
   else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "v" && e.target.tagName !== "INPUT") { e.preventDefault(); toggleClip(); }
   // with the clipboard panel open, 1-9 pastes that item (only when typing isn't going to a terminal/input)
   else if (clipOn && /^[1-9]$/.test(e.key) && !e.ctrlKey && !e.altKey && !e.target.closest(".xterm, input")) {
@@ -1072,6 +1438,8 @@ function mockInvoke(cmd, args) {
     case "save_host": { const x = { ...args.input, id: args.input.id || String(Date.now()), hasSecret: false, icon: db.find((d) => d.id === args.input.id)?.icon || "" }; const i = db.findIndex((d) => d.id === x.id); i >= 0 ? (db[i] = x) : db.push(x); return Promise.resolve(x); }
     case "set_host_icon": { const x = db.find((d) => d.id === args.id); if (x) x.icon = args.icon; return Promise.resolve(); }
     case "connect": setTimeout(() => { args.onEvent.onmessage({ type: "status", state: "connected", message: "" }); args.onEvent.onmessage({ type: "data", data: demo }); }, 400); return Promise.resolve();
-    default: return Promise.resolve(cmd === "clip_read" ? "" : null);
+    case "clip_write": mockInvoke.clip = args.text; return Promise.resolve(null);
+    case "clip_read": return Promise.resolve(mockInvoke.clip || "");
+    default: return Promise.resolve(null);
   }
 }
